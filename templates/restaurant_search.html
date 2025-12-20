@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block content %}
+  <a href="/"><button>Back to Feed</button></a>
+  <h2>Find Restaurants</h2>
+
+  <form id="filter-form" method="get" style="margin-bottom: 20px;">
+    <input type="text" id="search-bar" name="q" placeholder="Search by name, type, or address" value="{{ query }}" />
+    <label for="cuisine_type">Filter by Type:</label>
+    <select name="cuisine_type" id="cuisine_type" multiple size="{{ cuisine_choices|length }}" style="vertical-align: middle; min-width: 150px;">
+        {% for value, label in cuisine_choices %}
+          <option value="{{ value }}" {% if value in selected_types %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+  </form>
+
+  <script>
+    var filterTimeout;
+
+    function filterRestaurants() {
+      var form = document.getElementById('filter-form');
+      var formData = new FormData(form);
+      var params = new URLSearchParams(formData);
+      
+      fetch('?' + params.toString(), {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.text())
+      .then(html => {
+        var newList = document.getElementById('restaurants-list');
+        if (newList) {
+          newList.innerHTML = html;
+        }
+      })
+      .catch(error => console.error('Error:', error));
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var select = document.getElementById('cuisine_type');
+      var searchBar = document.getElementById('search-bar');
+
+      // Make multi-select work with click only (no Ctrl/Cmd needed)
+      if (select) {
+        select.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          var option = e.target;
+          if (option.tagName.toLowerCase() === 'option') {
+            option.selected = !option.selected;
+            option.parentNode.focus();
+            filterRestaurants();
+          }
+        });
+      }
+
+      // Real-time search - trigger on every keystroke
+      if (searchBar) {
+        searchBar.addEventListener('input', function() {
+          clearTimeout(filterTimeout);
+          filterTimeout = setTimeout(function() {
+            filterRestaurants();
+          }, 300);
+        });
+      }
+    });
+  </script>
+
+  <button onclick="document.getElementById('add-restaurant-form').style.display='block'">Add Restaurant</button>
+  <div id="add-restaurant-form" style="display:none; margin-top:20px; border:1px solid #ccc; padding:20px;">
+    <h3>Add a Restaurant</h3>
+    {% comment %}
+    <div style="margin-bottom: 15px;">
+      <label>Search Location:</label><br>
+      <input id="location-autocomplete" type="text" placeholder="Start typing a city or address..." style="width: 100%; padding: 8px;">
+      <small>This will autofill City, Province, and Country fields</small>
+    </div>
+    {% endcomment %}
+    <form method="post" id="restaurant-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Submit</button>
+      <button type="button" onclick="document.getElementById('add-restaurant-form').style.display='none'">Cancel</button>
+    </form>
+  </div>
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initAutocomplete" async defer></script>
+  <script>
+    function initAutocomplete() {
+      const input = document.getElementById('location-autocomplete');
+      const autocomplete = new google.maps.places.Autocomplete(input, {
+        types: ['(cities)'],
+        componentRestrictions: { country: 'ca' } // Restrict to Canada, remove to allow worldwide
+      });
+
+      autocomplete.addListener('place_changed', function() {
+        const place = autocomplete.getPlace();
+        if (!place.address_components) {
+          return;
+        }
+
+        let city = '';
+        let province = '';
+        let country = '';
+        let postalCode = '';
+
+        for (const component of place.address_components) {
+          const types = component.types;
+          if (types.includes('locality')) {
+            city = component.long_name;
+          }
+          if (types.includes('administrative_area_level_1')) {
+            province = component.long_name;
+          }
+          if (types.includes('country')) {
+            country = component.long_name;
+          }
+          if (types.includes('postal_code')) {
+            postalCode = component.long_name;
+          }
+        }
+
+        // Fill in the form fields
+        const cityField = document.querySelector('#restaurant-form input[name="city"]');
+        const provinceField = document.querySelector('#restaurant-form input[name="province"]');
+        const countryField = document.querySelector('#restaurant-form input[name="country"]');
+        const postalField = document.querySelector('#restaurant-form input[name="postal_code"]');
+
+        if (cityField) cityField.value = city;
+        if (provinceField) provinceField.value = province;
+        if (countryField) countryField.value = country;
+        if (postalField && postalCode) postalField.value = postalCode;
+      });
+    }
+  </script>
+
+  <h3>Restaurants</h3>
+  <div id="restaurants-list">
+    <ul>
+      {% for restaurant in page_obj %}
+        <li>
+          <strong><a href="{% url 'restaurant_detail' restaurant.id %}">{{ restaurant.name }}</a></strong> ({{ restaurant.cuisine_type }})<br>
+          {{ restaurant.address_line1 }}{% if restaurant.address_line2 %}, {{ restaurant.address_line2 }}{% endif %}, {{ restaurant.city }}, {{ restaurant.province }}, {{ restaurant.postal_code }}, {{ restaurant.country }}
+        </li>
+      {% empty %}
+        <li>No restaurants found.</li>
+      {% endfor %}
+    </ul>
+
+    <div style="margin-top:20px;">
+      {% if page_obj.has_previous %}
+        <a href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Previous</a>
+      {% endif %}
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a href="?q={{ query }}&page={{ page_obj.next_page_number }}">Next</a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

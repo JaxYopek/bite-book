@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Welcome to the Feed!</h2>
+  <p>You are logged in.</p>
+
+  <a href="/restaurants/"><button>Find Restaurants</button></a>
+
+  <h3>Recent Posts</h3>
+  <ul>
+    {% for post in posts %}
+      <li>
+        <h4>{{ post.title }}</h4>
+        <br>{{ post.rating|floatformat:1 }} stars
+        {% if post.review_text %}<br>{{ post.review_text }}{% endif %}
+      </li>
+    {% empty %}
+      <li>No posts yet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

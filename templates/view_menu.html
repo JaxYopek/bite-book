@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+  <a href="{% url 'restaurant_detail' restaurant.id %}"><button>Back to Restaurant</button></a>
+  <h2>Menu for {{ restaurant.name }}</h2>
+  
+  <h3>Menu Items</h3>
+  <ul>
+    {% for item in menu.items.all %}
+      <li>
+        <strong>{{ item.name }}</strong> - ${{ item.price }}
+        {% if item.description %}<br>{{ item.description }}{% endif %}
+        <br><a href="{% url 'add_review' item.id %}"><button>Review Item</button></a>
+        {% if item.reviews.exists %}
+          <h4>Reviews:</h4>
+          <ul>
+            {% for review in item.reviews.all %}
+              <li>
+                <strong>{% if review.user %}{{ review.user.username }}{% else %}Anonymous{% endif %}</strong> - {{ review.rating|floatformat:1 }} stars
+                {% if review.review_text %}<br>{{ review.review_text }}{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li>No items yet.</li>
+    {% endfor %}
+  </ul>
+  
+  <h3>Add New Item</h3>
+  <form method="post">
+    {% csrf_token %}
+    <label>Name:</label>
+    <input type="text" name="name" required>
+    <label>Description (optional):</label>
+    <textarea name="description"></textarea>
+    <label>Price:</label>
+    <input type="number" step="0.01" name="price" required>
+    <button type="submit">Add Item</button>
+  </form>
+{% endblock %}

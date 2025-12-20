@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+  <a href="{% url 'restaurant_search' %}"><button>Back to Restaurants</button></a>
+  <h2>{{ restaurant.name }}</h2>
+  <p><strong>Type:</strong> {{ restaurant.cuisine_type }}</p>
+  <p><strong>Address:</strong> {{ restaurant.address_line1 }}{% if restaurant.address_line2 %}, {{ restaurant.address_line2 }}{% endif %}, {{ restaurant.city }}, {{ restaurant.province }}, {{ restaurant.postal_code }}, {{ restaurant.country }}</p>
+  
+  {% if restaurant.menu %}
+    <a href="{% url 'view_menu' restaurant.id %}"><button>View Menu</button></a>
+  {% else %}
+    <a href="{% url 'add_menu' restaurant.id %}"><button>Add Menu</button></a>
+  {% endif %}
+{% endblock %}
