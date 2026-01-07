@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-  <a href="{% url 'restaurant_detail' restaurant.id %}"><button>Back to Restaurant</button></a>
+<div class="container">
+  <a href="{% url 'restaurant_detail' restaurant.id %}"><button class="secondary-btn">Back to Restaurant</button></a>
   <h2>Add Menu for {{ restaurant.name }}</h2>
   
   <form method="post" id="menu-form">
@@ -37,4 +38,5 @@
       itemCount++;
     }
   </script>
+</div>
 {% endblock %}

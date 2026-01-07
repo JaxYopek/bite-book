@@ -2,7 +2,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 
 from django.contrib.auth.decorators import login_required
-from .models import Restaurant, Menu, MenuItem, Review
+from .models import Restaurant, Menu, MenuItem, Review, Profile, Follow
 from posts.models import Post
 from django import forms
 
@@ -32,6 +32,11 @@ class RestaurantForm(forms.ModelForm):
 		if Restaurant.objects.filter(normalized_address=normalized_address).exists():
 			raise forms.ValidationError('A restaurant at this address already exists.')
 		return cleaned_data
+
+class ProfileForm(forms.ModelForm):
+	class Meta:
+		model = Profile
+		fields = ['display_name', 'profile_picture']
 
 def root_redirect(request):
 	if request.user.is_authenticated:
@@ -104,7 +109,29 @@ def restaurant_search(request):
 @login_required
 def restaurant_detail(request, restaurant_id):
 	restaurant = get_object_or_404(Restaurant, id=restaurant_id)
-	return render(request, 'restaurant_detail.html', {'restaurant': restaurant})
+	
+	# Calculate rating statistics if menu exists
+	rating_stats = None
+	if hasattr(restaurant, 'menu'):
+		from django.db.models import Avg, Min, Max
+		menu_items = restaurant.menu.items.all()
+		all_reviews = Review.objects.filter(menu_item__in=menu_items)
+		if all_reviews.exists():
+			stats = all_reviews.aggregate(
+				avg_rating=Avg('rating'),
+				min_rating=Min('rating'),
+				max_rating=Max('rating')
+			)
+			rating_stats = {
+				'avg': round(stats['avg_rating'], 1) if stats['avg_rating'] else 0,
+				'min': round(stats['min_rating'], 1) if stats['min_rating'] else 0,
+				'max': round(stats['max_rating'], 1) if stats['max_rating'] else 0
+			}
+	
+	return render(request, 'restaurant_detail.html', {
+		'restaurant': restaurant,
+		'rating_stats': rating_stats
+	})
 
 
 @login_required
@@ -155,17 +182,20 @@ def add_review(request, menu_item_id):
 		review_text = request.POST.get('review_text', '')
 		is_public = request.POST.get('is_public') == 'on'
 		user = request.user if is_public else None
+		image = request.FILES.get('image')
 		review = Review.objects.create(
 			menu_item=menu_item,
 			user=user,
 			rating=float(rating),
 			review_text=review_text,
-			is_public=is_public
+			is_public=is_public,
+			image=image
 		)
 		if is_public:
 			username = request.user.username if is_public else 'Anonymous'
 			title = f"{username} reviewed {menu_item.name} at {menu_item.menu.restaurant.name}"
 			Post.objects.create(
+				post_type='review',
 				title=title,
 				menu_item=menu_item,
 				user=user,
@@ -182,6 +212,32 @@ def feed(request):
 	posts = Post.objects.all().order_by('-created_at')[:20]  # Show latest 20
 	return render(request, 'feed.html', {'posts': posts})
 
+@login_required
+def user_profile(request):
+	user_posts = Post.objects.filter(user=request.user).order_by('-created_at')
+	user_reviews = Review.objects.filter(user=request.user).order_by('-created_at')
+	profile, created = Profile.objects.get_or_create(user=request.user)
+	following_count = Follow.objects.filter(follower=request.user).count()
+	followers_count = Follow.objects.filter(following=request.user).count()
+	return render(request, 'user_profile.html', {
+		'user_posts': user_posts,
+		'user_reviews': user_reviews,
+		'profile': profile,
+		'following_count': following_count,
+		'followers_count': followers_count
+	})
+
+@login_required
+def edit_profile(request):
+	profile, created = Profile.objects.get_or_create(user=request.user)
+	if request.method == 'POST':
+		form = ProfileForm(request.POST, request.FILES, instance=profile)
+		if form.is_valid():
+			form.save()
+			return redirect('user_profile')
+	else:
+		form = ProfileForm(instance=profile)
+	return render(request, 'edit_profile.html', {'form': form})
 
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login as auth_login
@@ -198,3 +254,37 @@ def signup(request):
 	else:
 		form = UserCreationForm()
 	return render(request, 'registration/signup.html', {'form': form})
+
+@login_required
+def follow_user(request, username):
+	user_to_follow = get_object_or_404(get_user_model(), username=username)
+	if user_to_follow != request.user:
+		Follow.objects.get_or_create(follower=request.user, following=user_to_follow)
+	return redirect('view_user_profile', username=username)
+
+@login_required
+def unfollow_user(request, username):
+	user_to_unfollow = get_object_or_404(get_user_model(), username=username)
+	Follow.objects.filter(follower=request.user, following=user_to_unfollow).delete()
+	return redirect('view_user_profile', username=username)
+
+@login_required
+def view_user_profile(request, username):
+	profile_user = get_object_or_404(get_user_model(), username=username)
+	user_posts = Post.objects.filter(user=profile_user).order_by('-created_at')
+	user_reviews = Review.objects.filter(user=profile_user).order_by('-created_at')
+	profile, created = Profile.objects.get_or_create(user=profile_user)
+	following_count = Follow.objects.filter(follower=profile_user).count()
+	followers_count = Follow.objects.filter(following=profile_user).count()
+	is_following = Follow.objects.filter(follower=request.user, following=profile_user).exists()
+	is_own_profile = request.user == profile_user
+	return render(request, 'view_user_profile.html', {
+		'profile_user': profile_user,
+		'user_posts': user_posts,
+		'user_reviews': user_reviews,
+		'profile': profile,
+		'following_count': following_count,
+		'followers_count': followers_count,
+		'is_following': is_following,
+		'is_own_profile': is_own_profile
+	})

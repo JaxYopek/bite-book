@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-  <a href="/"><button>Back to Feed</button></a>
+<div class="container">
   <h2>Find Restaurants</h2>
 
   <form id="filter-form" method="get" style="margin-bottom: 20px;">
@@ -65,7 +65,7 @@
     });
   </script>
 
-  <button onclick="document.getElementById('add-restaurant-form').style.display='block'">Add Restaurant</button>
+  <button class="secondary-btn" onclick="document.getElementById('add-restaurant-form').style.display='block'">Add Restaurant</button>
   <div id="add-restaurant-form" style="display:none; margin-top:20px; border:1px solid #ccc; padding:20px;">
     <h3>Add a Restaurant</h3>
     {% comment %}
@@ -154,6 +154,7 @@
       {% if page_obj.has_next %}
         <a href="?q={{ query }}&page={{ page_obj.next_page_number }}">Next</a>
       {% endif %}
+    </div>
     </div>
   </div>
 {% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <div class="card">
+    {% if profile.profile_picture %}
+      <img src="{{ profile.profile_picture.url }}" alt="Profile Picture" style="width: 100px; height: 100px; border-radius: 50%;">
+    {% endif %}
+    <h2>{{ profile.display_name|default:profile_user.username }}</h2>
+    <p>Following: {{ following_count }} | Followers: {{ followers_count }}</p>
+    
+    {% if not is_own_profile %}
+      {% if is_following %}
+        <a href="{% url 'unfollow_user' profile_user.username %}"><button class="secondary-btn">Unfollow</button></a>
+      {% else %}
+        <a href="{% url 'follow_user' profile_user.username %}"><button>Follow</button></a>
+      {% endif %}
+    {% else %}
+      <a href="{% url 'edit_profile' %}"><button>Edit Profile</button></a>
+    {% endif %}
+  </div>
+
+  <h3>Posts</h3>
+  <ul style="list-style-type: none;">
+    {% for post in user_posts %}
+      <li class="card">
+        <h4>{{ post.title }}</h4>
+        {% if post.post_type == 'review' %}
+          <p class="rating">{{ post.rating|floatformat:1 }}/10 points</p>
+        {% endif %}
+        {% if post.review_text %}<p>{{ post.review_text }}</p>{% endif %}
+        <p class="helper-text">{{ post.created_at }}</p>
+      </li>
+    {% empty %}
+      <li>No posts yet.</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Reviews</h3>
+  <ul style="list-style-type: none;">
+    {% for review in user_reviews %}
+      <li class="card">
+        <strong>{{ review.menu_item.name }}</strong> at {{ review.menu_item.menu.restaurant.name }}
+        <p class="rating">{{ review.rating|floatformat:1 }}/10 points</p>
+        {% if review.review_text %}<p>{{ review.review_text }}</p>{% endif %}
+        {% if review.image %}
+          <img src="{{ review.image.url }}" alt="Review photo" style="max-width: 300px; border-radius: 8px; margin-top: 10px;">
+        {% endif %}
+        <p class="helper-text">{{ review.created_at }}</p>
+      </li>
+    {% empty %}
+      <li>No reviews yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

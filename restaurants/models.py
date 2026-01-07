@@ -4,6 +4,31 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+class Profile(models.Model):
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
+    display_name = models.CharField(max_length=100, blank=True)
+    profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s profile"
+
+class Follow(models.Model):
+    follower = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='following')
+    following = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='followers')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('follower', 'following')
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(follower=models.F('following')),
+                name='prevent_self_follow'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.follower.username} follows {self.following.username}"
+
 class Restaurant(models.Model):
 	name = models.CharField(max_length=255)
 	CUISINE_CHOICES = [
@@ -71,6 +96,7 @@ class Review(models.Model):
 	user = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True, blank=True)
 	rating = models.DecimalField(max_digits=3, decimal_places=1, validators=[MinValueValidator(1.0), MaxValueValidator(10.0)])
 	review_text = models.TextField(blank=True)
+	image = models.ImageField(upload_to='review_images/', blank=True, null=True)
 	is_public = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 

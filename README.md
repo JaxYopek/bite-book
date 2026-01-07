@@ -19,6 +19,7 @@ A Django-based web application for restaurant and menu item reviews, inspired by
 - **Posts Feed**:
   - Public reviews appear as posts on everyone's feed.
   - Posts have descriptive titles (e.g., "username reviewed item at restaurant").
+  - Create personal diary entries for general food thoughts and experiences.
   - View recent posts with ratings and review text.
 
 ## Tech Stack
@@ -68,7 +69,9 @@ A Django-based web application for restaurant and menu item reviews, inspired by
 
 ## Usage
 
-- **Home/Feed**: View recent public posts from all users.
+- **Home/Feed**: View recent public posts from all users. Navigation bar for easy access to features.
+- **Create Post**: Write personal diary entries to share food experiences.
+- **My Profile**: View your own posts and reviews.
 - **Restaurants**: Search for restaurants, add new ones, or view details.
 - **Menus**: For each restaurant, view or add menu items.
 - **Reviews**: Rate and review menu items; public reviews appear on the feed.

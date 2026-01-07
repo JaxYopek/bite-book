@@ -1,10 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
-  <h2>Sign Up</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Sign Up</button>
-  </form>
-  <p>Already have an account? <a href="/login/">Login here</a>.</p>
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh; width: 100%;">
+  <div style="width: 100%; max-width: 400px; background-color: #FFFFFF; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border: 1px solid rgba(91, 89, 65, 0.15);">
+    <div style="text-align: center; margin-bottom: 30px;">
+      <h1 style="font-size: 32px; margin-bottom: 8px; color: #5B5941;">Bitebook</h1>
+      <p style="color: rgba(91, 89, 65, 0.7); font-size: 14px;">Share your culinary adventures</p>
+    </div>
+    
+    <h2 style="text-align: center; margin-bottom: 25px; font-size: 20px;">Create Your Account</h2>
+    
+    <form method="post" style="padding: 0 !important; margin-bottom: 0 !important; border: none !important; background-color: transparent !important;">
+      {% csrf_token %}
+      {% for field in form %}
+        <div style="margin-bottom: 15px;">
+          <label style="font-weight: 500; margin-bottom: 5px; display: block;">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}
+            <small class="helper-text">{{ field.help_text }}</small>
+          {% endif %}
+          {% if field.errors %}
+            <div style="color: #B94A48; font-size: 0.9em; margin-top: 5px;">
+              {{ field.errors }}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" style="width: 100%; padding: 12px; margin-top: 10px; font-size: 16px;">Sign Up</button>
+    </form>
+    
+    <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(91, 89, 65, 0.15);">
+      <p style="color: rgba(91, 89, 65, 0.7);">Already have an account? <a href="/login/" style="color: #FB8B24; font-weight: 500;">Log in</a></p>
+    </div>
+  </div>
+</div>
 {% endblock %}

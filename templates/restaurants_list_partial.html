@@ -1,6 +1,6 @@
 <ul>
   {% for restaurant in page_obj %}
-    <li>
+    <li class="card">
       <strong><a href="{% url 'restaurant_detail' restaurant.id %}">{{ restaurant.name }}</a></strong> ({{ restaurant.cuisine_type }})<br>
       {{ restaurant.address_line1 }}{% if restaurant.address_line2 %}, {{ restaurant.address_line2 }}{% endif %}, {{ restaurant.city }}, {{ restaurant.province }}, {{ restaurant.postal_code }}, {{ restaurant.country }}
     </li>

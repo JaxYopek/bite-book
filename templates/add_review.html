@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-  <a href="{% url 'view_menu' menu_item.menu.restaurant.id %}"><button>Back to Menu</button></a>
+<div class="container">
+  <a href="{% url 'view_menu' menu_item.menu.restaurant.id %}"><button class="secondary-btn">Back to Menu</button></a>
   <h2>Review {{ menu_item.name }}</h2>
   
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <label>Rating:</label>
     <input type="number" step="0.1" min="1.0" max="10.0" name="rating" required>
@@ -11,8 +12,12 @@
     <label>Review (optional):</label>
     <textarea name="review_text"></textarea>
     <br>
+    <label>Upload Photo (optional):</label>
+    <input type="file" name="image" accept="image/*">
+    <br>
     <label><input type="checkbox" name="is_public" checked> Make this review public (will appear on your feed)</label>
     <br>
     <button type="submit">Submit Review</button>
   </form>
+</div>
 {% endblock %}

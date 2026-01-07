@@ -1,20 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
-  <h2>Welcome to the Feed!</h2>
-  <p>You are logged in.</p>
-
-  <a href="/restaurants/"><button>Find Restaurants</button></a>
-
-  <h3>Recent Posts</h3>
-  <ul>
+<div class="container">
+  <h2>Recent Posts</h2>
+  <ul style="list-style-type: none;">
     {% for post in posts %}
-      <li>
+      <li class="card">
+        <p style="margin-bottom: 5px;">
+          <a href="{% url 'view_user_profile' post.user.username %}" style="font-weight: 500;">{{ post.user.username }}</a>
+        </p>
         <h4>{{ post.title }}</h4>
-        <br>{{ post.rating|floatformat:1 }} stars
-        {% if post.review_text %}<br>{{ post.review_text }}{% endif %}
+        {% if post.post_type == 'review' %}
+          <p class="rating">{{ post.rating|floatformat:1 }}/10 points</p>
+        {% endif %}
+        {% if post.review_text %}<p>{{ post.review_text }}</p>{% endif %}
+        <p class="helper-text">{{ post.created_at }}</p>
       </li>
     {% empty %}
       <li>No posts yet.</li>
     {% endfor %}
   </ul>
+</div>
 {% endblock %}

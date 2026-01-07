@@ -1,22 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
-  <a href="{% url 'restaurant_detail' restaurant.id %}"><button>Back to Restaurant</button></a>
+<div class="container">
+  <a href="{% url 'restaurant_detail' restaurant.id %}"><button class="secondary-btn">Back to Restaurant</button></a>
   <h2>Menu for {{ restaurant.name }}</h2>
   
   <h3>Menu Items</h3>
   <ul>
     {% for item in menu.items.all %}
-      <li>
+      <li class="card">
         <strong>{{ item.name }}</strong> - ${{ item.price }}
         {% if item.description %}<br>{{ item.description }}{% endif %}
         <br><a href="{% url 'add_review' item.id %}"><button>Review Item</button></a>
         {% if item.reviews.exists %}
           <h4>Reviews:</h4>
-          <ul>
+          <ul style="list-style-type: none;">
             {% for review in item.reviews.all %}
-              <li>
-                <strong>{% if review.user %}{{ review.user.username }}{% else %}Anonymous{% endif %}</strong> - {{ review.rating|floatformat:1 }} stars
-                {% if review.review_text %}<br>{{ review.review_text }}{% endif %}
+              <li class="card">
+                <strong>{% if review.user %}{{ review.user.username }}{% else %}<span class="anonymous">Anonymous</span>{% endif %}</strong>
+                <p class="rating">{{ review.rating|floatformat:1 }} stars</p>
+                {% if review.review_text %}<p>{{ review.review_text }}</p>{% endif %}
+                {% if review.image %}
+                  <img src="{{ review.image.url }}" alt="Review photo" style="max-width: 300px; border-radius: 8px; margin-top: 10px;">
+                {% endif %}
               </li>
             {% endfor %}
           </ul>
@@ -38,4 +43,5 @@
     <input type="number" step="0.01" name="price" required>
     <button type="submit">Add Item</button>
   </form>
+</div>
 {% endblock %}
