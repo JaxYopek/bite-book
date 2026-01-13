@@ -3,11 +3,17 @@
 <div style="display: flex; justify-content: center; align-items: center; min-height: 80vh; width: 100%;">
   <div style="width: 100%; max-width: 400px; background-color: #FFFFFF; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border: 1px solid rgba(91, 89, 65, 0.15);">
     <div style="text-align: center; margin-bottom: 30px;">
-      <h1 style="font-size: 32px; margin-bottom: 8px; color: #5B5941;">Bitebook</h1>
+      <h1 style="font-size: 32px; margin-bottom: 8px; color: #5B5941;">bitebook</h1>
       <p style="color: rgba(91, 89, 65, 0.7); font-size: 14px;">Share your culinary adventures</p>
     </div>
     
     <h2 style="text-align: center; margin-bottom: 25px; font-size: 20px;">Welcome Back</h2>
+    
+    {% if form.non_field_errors %}
+      <div style="background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
     
     <form method="post" style="padding: 0 !important; margin-bottom: 0 !important; border: none !important; background-color: transparent !important;">
       {% csrf_token %}

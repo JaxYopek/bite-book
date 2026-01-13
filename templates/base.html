@@ -1,8 +1,10 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}BiteBook{% endblock %}</title>
+    <title>{% block title %}bitebook{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     <style>
         /* Global Styles */
         body {
@@ -191,7 +193,7 @@
 <body>
     {% if user.is_authenticated %}
     <nav>
-        <a href="{% url 'feed' %}" class="nav-logo">Bitebook</a>
+        <a href="{% url 'feed' %}" class="nav-logo">bitebook</a>
         <ul>
             <li><a href="{% url 'create_diary_entry' %}">Create Post</a></li>
             <li><a href="{% url 'user_profile' %}">My Profile</a></li>
