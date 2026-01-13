@@ -1,55 +1,159 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container">
-  <div class="card">
-    {% if profile.profile_picture %}
-      <img src="{{ profile.profile_picture.url }}" alt="Profile Picture" style="width: 100px; height: 100px; border-radius: 50%;">
-    {% endif %}
-    <h2>{{ profile.display_name|default:profile_user.username }}</h2>
-    <p>Following: {{ following_count }} | Followers: {{ followers_count }}</p>
-    
-    {% if not is_own_profile %}
-      {% if is_following %}
-        <a href="{% url 'unfollow_user' profile_user.username %}"><button class="secondary-btn">Unfollow</button></a>
-      {% else %}
-        <a href="{% url 'follow_user' profile_user.username %}"><button>Follow</button></a>
-      {% endif %}
-    {% else %}
-      <a href="{% url 'edit_profile' %}"><button>Edit Profile</button></a>
-    {% endif %}
+  <!-- Profile Header -->
+  <div class="card" style="padding: 30px; margin-bottom: 30px;">
+    <div style="display: flex; gap: 25px; align-items: flex-start;">
+      <div style="flex-shrink: 0;">
+        {% if profile.profile_picture %}
+          <img src="{{ profile.profile_picture.url }}" alt="Profile Picture" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #FB8B24;">
+        {% else %}
+          <div style="width: 120px; height: 120px; border-radius: 50%; background-color: #5B5941; display: flex; align-items: center; justify-content: center; color: #F7EDE2; font-size: 3em; font-weight: bold; border: 3px solid #FB8B24;">
+            {{ profile_user.username|first|upper }}
+          </div>
+        {% endif %}
+      </div>
+      
+      <div style="flex: 1;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;">
+          <h2 style="margin: 0;">{{ profile.display_name|default:profile_user.username }}</h2>
+          {% if is_top_reviewer %}
+            <span style="display: inline-flex; align-items: center; gap: 3px; background-color: rgba(251, 139, 36, 0.1); color: #FB8B24; padding: 3px 10px; border-radius: 10px; font-size: 0.7em; font-weight: 500; border: 1px solid rgba(251, 139, 36, 0.3);">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="#FB8B24" stroke="none">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              Top Reviewer
+            </span>
+          {% endif %}
+        </div>
+        <p style="color: rgba(91, 89, 65, 0.6); font-size: 0.95em; margin: 5px 0 15px 0;">@{{ profile_user.username }}</p>
+        
+        <div style="display: flex; gap: 25px; margin: 15px 0;">
+          <div style="text-align: center;">
+            <div style="font-size: 1.5em; font-weight: bold; color: #FB8B24;">{{ user_reviews.count }}</div>
+            <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6);">Reviews</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 1.5em; font-weight: bold; color: #FB8B24;">{{ following_count }}</div>
+            <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6);">Following</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 1.5em; font-weight: bold; color: #FB8B24;">{{ followers_count }}</div>
+            <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6);">Followers</div>
+          </div>
+        </div>
+        
+        {% if flavor_profile %}
+          <div style="margin: 15px 0; padding: 10px 0; border-top: 1px solid rgba(91, 89, 65, 0.1);">
+            <div style="font-size: 0.75em; font-weight: 500; color: rgba(91, 89, 65, 0.5); margin-bottom: 6px;">Flavor Profile</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+              {% for cuisine, count in flavor_profile %}
+                <span style="display: inline-flex; align-items: center; gap: 3px; background-color: rgba(251, 139, 36, 0.1); color: rgba(91, 89, 65, 0.7); padding: 3px 10px; border-radius: 12px; font-size: 0.75em;">
+                  {{ cuisine }} <span style="color: rgba(91, 89, 65, 0.4);">·</span> {{ count }}
+                </span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        
+        {% if not is_own_profile %}
+          {% if is_following %}
+            <a href="{% url 'unfollow_user' profile_user.username %}"><button class="secondary-btn" style="margin-top: 10px;">Unfollow</button></a>
+          {% else %}
+            <a href="{% url 'follow_user' profile_user.username %}"><button style="margin-top: 10px;">Follow</button></a>
+          {% endif %}
+        {% else %}
+          <a href="{% url 'edit_profile' %}"><button style="margin-top: 10px;">Edit Profile</button></a>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
-  <h3>Posts</h3>
-  <ul style="list-style-type: none;">
-    {% for post in user_posts %}
-      <li class="card">
-        <h4>{{ post.title }}</h4>
-        {% if post.post_type == 'review' %}
-          <p class="rating">{{ post.rating|floatformat:1 }}/10 points</p>
-        {% endif %}
-        {% if post.review_text %}<p>{{ post.review_text }}</p>{% endif %}
-        <p class="helper-text">{{ post.created_at }}</p>
-      </li>
-    {% empty %}
-      <li>No posts yet.</li>
-    {% endfor %}
-  </ul>
+  <!-- Favorite Restaurants -->
+  <h3 style="margin: 30px 0 15px 0; display: flex; align-items: center; gap: 8px;">
+    <span style="color: #FB8B24;">★</span> Favorite Restaurants
+  </h3>
+  {% if favorite_restaurants %}
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px;">
+      {% for item in favorite_restaurants %}
+        <a href="{% url 'restaurant_detail' item.restaurant.id %}" style="text-decoration: none;">
+          <div class="card" style="padding: 12px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0,0,0,0.1)';">
+            <div style="font-weight: 600; font-size: 0.95em; color: #5B5941; margin-bottom: 4px; white-space: nowrap;">{{ item.restaurant.name }}</div>
+            <div style="font-size: 0.75em; color: rgba(91, 89, 65, 0.6); white-space: nowrap;">{{ item.restaurant.cuisine_type }}</div>
+            <div style="font-size: 0.75em; color: rgba(91, 89, 65, 0.5); margin-top: 2px; white-space: nowrap;">{{ item.restaurant.city }}</div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="color: rgba(91, 89, 65, 0.6); font-style: italic; margin-bottom: 30px;">No favorite restaurants yet.</p>
+  {% endif %}
 
-  <h3>Reviews</h3>
-  <ul style="list-style-type: none;">
-    {% for review in user_reviews %}
-      <li class="card">
-        <strong>{{ review.menu_item.name }}</strong> at {{ review.menu_item.menu.restaurant.name }}
-        <p class="rating">{{ review.rating|floatformat:1 }}/10 points</p>
-        {% if review.review_text %}<p>{{ review.review_text }}</p>{% endif %}
-        {% if review.image %}
-          <img src="{{ review.image.url }}" alt="Review photo" style="max-width: 300px; border-radius: 8px; margin-top: 10px;">
-        {% endif %}
-        <p class="helper-text">{{ review.created_at }}</p>
-      </li>
-    {% empty %}
-      <li>No reviews yet.</li>
-    {% endfor %}
-  </ul>
+  <!-- Want to Try -->
+  <h3 style="margin: 30px 0 15px 0; display: flex; align-items: center; gap: 8px;">
+    <span style="color: #FB8B24;">+</span> Want to Try
+  </h3>
+  {% if want_to_try_restaurants %}
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px;">
+      {% for item in want_to_try_restaurants %}
+        <a href="{% url 'restaurant_detail' item.restaurant.id %}" style="text-decoration: none;">
+          <div class="card" style="padding: 12px 16px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0,0,0,0.1)';">
+            <div style="font-weight: 600; font-size: 0.95em; color: #5B5941; margin-bottom: 4px; white-space: nowrap;">{{ item.restaurant.name }}</div>
+            <div style="font-size: 0.75em; color: rgba(91, 89, 65, 0.6); white-space: nowrap;">{{ item.restaurant.cuisine_type }}</div>
+            <div style="font-size: 0.75em; color: rgba(91, 89, 65, 0.5); margin-top: 2px; white-space: nowrap;">{{ item.restaurant.city }}</div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="color: rgba(91, 89, 65, 0.6); font-style: italic; margin-bottom: 30px;">No restaurants on the want-to-try list yet.</p>
+  {% endif %}
+
+  <!-- Recent Reviews -->
+  <h3 style="margin: 30px 0 15px 0;">Recent Reviews</h3>
+  {% if user_reviews %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; margin-bottom: 30px;">
+      {% for review in user_reviews|slice:":6" %}
+        <div class="card" style="padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+            <div style="flex: 1;">
+              <a href="{% url 'restaurant_detail' review.menu_item.menu.restaurant.id %}" style="font-weight: 600; color: #5B5941; font-size: 1.05em;">{{ review.menu_item.name }}</a>
+              <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6); margin-top: 3px;">at {{ review.menu_item.menu.restaurant.name }}</div>
+            </div>
+            <div style="font-size: 1.3em; font-weight: bold; color: #FB8B24; margin-left: 10px;">{{ review.rating|floatformat:1 }}</div>
+          </div>
+          {% if review.review_text %}
+            <p style="font-size: 0.9em; color: rgba(91, 89, 65, 0.8); margin: 10px 0; line-height: 1.4;">{{ review.review_text|truncatewords:20 }}</p>
+          {% endif %}
+          {% if review.image %}
+            <img src="{{ review.image.url }}" alt="Review photo" style="width: 100%; height: 150px; object-fit: cover; border-radius: 5px; margin-top: 10px;">
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="color: rgba(91, 89, 65, 0.6); font-style: italic; margin-bottom: 30px;">No reviews yet.</p>
+  {% endif %}
+
+  <!-- Recent Posts -->
+  <h3 style="margin: 30px 0 15px 0;">Recent Activity</h3>
+  {% if user_posts %}
+    <ul style="list-style-type: none; padding-left: 0;">
+      {% for post in user_posts|slice:":5" %}
+        <li class="card" style="padding: 15px; margin-bottom: 10px;">
+          <h4 style="margin: 0 0 8px 0; font-size: 1.05em;">{{ post.title }}</h4>
+          {% if post.post_type == 'review' %}
+            <p style="color: #FB8B24; font-weight: 600; margin: 5px 0; font-size: 0.95em;">{{ post.rating|floatformat:1 }}/10</p>
+          {% endif %}
+          {% if post.review_text %}
+            <p style="margin: 8px 0; font-size: 0.9em; color: rgba(91, 89, 65, 0.8);">{{ post.review_text|truncatewords:30 }}</p>
+          {% endif %}
+          <p style="font-size: 0.8em; color: rgba(91, 89, 65, 0.5); margin: 8px 0 0 0;">{{ post.created_at|timesince }} ago</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p style="color: rgba(91, 89, 65, 0.6); font-style: italic;">No posts yet.</p>
+  {% endif %}
 </div>
 {% endblock %}

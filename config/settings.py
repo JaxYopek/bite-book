@@ -127,7 +127,17 @@ MEDIA_ROOT = BASE_DIR / 'media'
 LOGIN_REDIRECT_URL = 'feed'
 LOGOUT_REDIRECT_URL = 'login'
 
+# Google Maps API Key (default - override in local_settings.py)
+GOOGLE_MAPS_API_KEY = ''
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Import local settings (for sensitive data like API keys)
+try:
+    from .local_settings import *
+except ImportError:
+    pass
+

@@ -31,10 +31,11 @@
             padding: 15px 25px 15px 15px;
             border: 1px solid rgba(91, 89, 65, 0.2);
             border-radius: 8px;
-            position: fixed;
+            position: absolute;
             right: 20px;
             top: 100px; /* Below nav with some space */
-            height: 500px; /* Fixed height, not full */
+            height: auto;
+            max-height: 500px; /* Maximum height */
             overflow-y: auto;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             margin-right: 50px;
@@ -214,7 +215,7 @@
         <h3>Trending Restaurants</h3>
         <p style="font-size: 0.85em; color: rgba(91, 89, 65, 0.7); margin-bottom: 15px;">Most reviewed in the last 24 hours</p>
         {% if trending_restaurants %}
-            <ul style="padding-left: 0;">
+            <ul style="padding-left: 0; list-style-type: none;">
                 {% for restaurant in trending_restaurants %}
                     <li style="margin-bottom: 10px;">
                         <a href="{% url 'restaurant_detail' restaurant.id %}" style="font-weight: 500;">{{ restaurant.name }}</a>

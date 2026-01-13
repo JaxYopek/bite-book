@@ -1,31 +1,106 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container">
-  <a href="{% url 'restaurant_search' %}"><button class="secondary-btn">Back to Restaurants</button></a>
-  <h2>{{ restaurant.name }}</h2>
-  <p><strong>Type:</strong> {{ restaurant.cuisine_type }}</p>
-  <p><strong>Address:</strong> {{ restaurant.address_line1 }}{% if restaurant.address_line2 %}, {{ restaurant.address_line2 }}{% endif %}, {{ restaurant.city }}, {{ restaurant.province }}, {{ restaurant.postal_code }}, {{ restaurant.country }}</p>
+  <a href="{% url 'restaurant_search' %}"><button class="secondary-btn" style="margin-bottom: 20px;">← Back to Restaurants</button></a>
   
-  {% if rating_stats %}
-    <div class="card" style="margin: 20px 0;">
-      <h3>Rating Overview</h3>
-      <div style="display: flex; align-items: center; margin: 15px 0;">
-        <span style="width: 80px; font-weight: 500;">Lowest</span>
-        <div style="flex: 1; height: 30px; background: linear-gradient(to right, #E07A1F 0%, #FB8B24 50%, #5B5941 100%); border-radius: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-          <div style="position: absolute; left: 0; top: -25px; color: #E07A1F; font-weight: bold;">{{ rating_stats.min }}</div>
-          <div style="position: absolute; left: 50%; transform: translateX(-50%); top: -25px; color: #FB8B24; font-weight: bold;">{{ rating_stats.avg }}</div>
-          <div style="position: absolute; right: 0; top: -25px; color: #5B5941; font-weight: bold;">{{ rating_stats.max }}</div>
+  <!-- Restaurant Header Card -->
+  <div class="card" style="padding: 30px; margin-bottom: 25px;">
+    <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 20px;">
+      <div style="flex: 1; min-width: 300px;">
+        <h2 style="margin: 0 0 15px 0; color: #5B5941;">{{ restaurant.name }}</h2>
+        <div style="display: inline-block; padding: 6px 14px; background-color: rgba(251, 139, 36, 0.15); color: #FB8B24; border-radius: 15px; font-size: 0.9em; font-weight: 600; margin-bottom: 15px;">
+          {{ restaurant.cuisine_type }}
         </div>
-        <span style="width: 80px; text-align: right; font-weight: 500;">Highest</span>
+        
+        <div style="display: flex; align-items: start; gap: 8px; margin-top: 12px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <a href="https://www.google.com/maps/search/?api=1&query={{ restaurant.address_line1|urlencode }}{% if restaurant.address_line2 %},{{ restaurant.address_line2|urlencode }}{% endif %},{{ restaurant.city|urlencode }},{{ restaurant.province|urlencode }},{{ restaurant.postal_code|urlencode }},{{ restaurant.country|urlencode }}" 
+             target="_blank" 
+             style="color: rgba(91, 89, 65, 0.7); text-decoration: none; transition: all 0.3s; line-height: 1.5;"
+             onmouseover="this.style.color='#FB8B24';"
+             onmouseout="this.style.color='rgba(91, 89, 65, 0.7)';">
+            {{ restaurant.address_line1 }}{% if restaurant.address_line2 %}, {{ restaurant.address_line2 }}{% endif %}<br>
+            {{ restaurant.city }}, {{ restaurant.province }} {{ restaurant.postal_code }}<br>
+            {{ restaurant.country }}
+          </a>
+        </div>
       </div>
-      <p style="text-align: center; color: rgba(91, 89, 65, 0.7); margin-top: 30px;">Average Rating: <strong style="color: #FB8B24;">{{ rating_stats.avg }}/10</strong></p>
+      
+      <!-- Primary Action Button -->
+      <div style="min-width: 200px;">
+        {% if restaurant.menu %}
+          <a href="{% url 'view_menu' restaurant.id %}" style="text-decoration: none;">
+            <button style="width: 100%; padding: 14px 24px; font-size: 1.05em; background-color: #FB8B24;">View Menu</button>
+          </a>
+        {% else %}
+          <a href="{% url 'add_menu' restaurant.id %}" style="text-decoration: none;">
+            <button style="width: 100%; padding: 14px 24px; font-size: 1.05em; background-color: #FB8B24;">Add Menu</button>
+          </a>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- Secondary Actions -->
+    <div style="display: flex; gap: 8px; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(91, 89, 65, 0.1);">
+      <a href="{% url 'toggle_restaurant_list' restaurant.id 'favorite' %}" style="text-decoration: none;">
+        <button style="padding: 6px 12px; font-size: 0.8em; {% if is_favorite %}background-color: rgba(251, 139, 36, 0.15); color: #FB8B24; border: 1.5px solid #FB8B24;{% else %}background-color: transparent; color: rgba(91, 89, 65, 0.6); border: 1.5px solid rgba(91, 89, 65, 0.25);{% endif %}">
+          {% if is_favorite %}★ Favorited{% else %}☆ Favorite{% endif %}
+        </button>
+      </a>
+      
+      <a href="{% url 'toggle_restaurant_list' restaurant.id 'want_to_try' %}" style="text-decoration: none;">
+        <button style="padding: 6px 12px; font-size: 0.8em; {% if is_want_to_try %}background-color: rgba(251, 139, 36, 0.15); color: #FB8B24; border: 1.5px solid #FB8B24;{% else %}background-color: transparent; color: rgba(91, 89, 65, 0.6); border: 1.5px solid rgba(91, 89, 65, 0.25);{% endif %}">
+          {% if is_want_to_try %}✓ Want to Try{% else %}+ Want to Try{% endif %}
+        </button>
+      </a>
+    </div>
+  </div>
+  
+  {% if restaurant.happy_hour %}
+    <div style="background-color: rgba(251, 139, 36, 0.08); border-left: 4px solid #FB8B24; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FB8B24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <strong style="color: #FB8B24; font-size: 1.1em;">Happy Hour</strong>
+      </div>
+      <p style="margin: 0; color: #5B5941; white-space: pre-line; line-height: 1.6; font-size: 0.95em;">{{ restaurant.happy_hour }}</p>
     </div>
   {% endif %}
   
-  {% if restaurant.menu %}
-    <a href="{% url 'view_menu' restaurant.id %}"><button>View Menu</button></a>
-  {% else %}
-    <a href="{% url 'add_menu' restaurant.id %}"><button>Add Menu</button></a>
+  {% if rating_stats %}
+    <div class="card" style="padding: 25px; margin-bottom: 25px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #5B5941;">Rating Overview</h3>
+        <div style="display: flex; align-items: center; gap: 5px; color: rgba(91, 89, 65, 0.6); font-size: 0.9em;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          {{ review_count }} review{{ review_count|pluralize }}
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; margin: 25px 0;">
+        <span style="font-size: 0.85em; font-weight: 500; color: rgba(91, 89, 65, 0.6); min-width: 60px;">Lowest</span>
+        <div style="flex: 1; position: relative; padding-top: 30px;">
+          <div style="height: 8px; background: linear-gradient(to right, #E07A1F 0%, #FB8B24 50%, #5B5941 100%); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></div>
+          <div style="position: absolute; left: 0; top: 0; color: #E07A1F; font-weight: bold; font-size: 1.1em;">{{ rating_stats.min }}</div>
+          <div style="position: absolute; left: 50%; transform: translateX(-50%); top: 0; color: #FB8B24; font-weight: bold; font-size: 1.1em;">{{ rating_stats.avg }}</div>
+          <div style="position: absolute; right: 0; top: 0; color: #5B5941; font-weight: bold; font-size: 1.1em;">{{ rating_stats.max }}</div>
+        </div>
+        <span style="font-size: 0.85em; font-weight: 500; color: rgba(91, 89, 65, 0.6); min-width: 60px; text-align: right;">Highest</span>
+      </div>
+      <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(91, 89, 65, 0.1);">
+        <div style="font-size: 0.9em; color: rgba(91, 89, 65, 0.6); margin-bottom: 5px;">Average Rating</div>
+        <div style="font-size: 2em; font-weight: bold; color: #FB8B24;">{{ rating_stats.avg }}<span style="font-size: 0.6em; color: rgba(91, 89, 65, 0.5);">/10</span></div>
+      </div>
+    </div>
   {% endif %}
-</div>
 {% endblock %}

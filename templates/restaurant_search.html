@@ -1,20 +1,127 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container">
-  <h2>Find Restaurants</h2>
+  <h2 style="margin-bottom: 10px;">Find Restaurants</h2>
+  <p style="color: rgba(91, 89, 65, 0.6); margin-bottom: 25px;">Discover the best dining experiences</p>
 
-  <form id="filter-form" method="get" style="margin-bottom: 20px;">
-    <input type="text" id="search-bar" name="q" placeholder="Search by name, type, or address" value="{{ query }}" />
-    <label for="cuisine_type">Filter by Type:</label>
-    <select name="cuisine_type" id="cuisine_type" multiple size="{{ cuisine_choices|length }}" style="vertical-align: middle; min-width: 150px;">
+  <form id="filter-form" method="get">
+    <!-- Search Bar -->
+    <div style="margin-bottom: 25px;">
+      <input 
+        type="text" 
+        id="search-bar" 
+        name="q" 
+        placeholder="Search by name, address, or city..." 
+        value="{{ query }}" 
+        style="width: 100%; padding: 15px 20px; font-size: 1em; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 30px; background-color: #fff; transition: all 0.3s;"
+        onfocus="this.style.borderColor='#FB8B24'; this.style.boxShadow='0 0 0 3px rgba(251, 139, 36, 0.1)';"
+        onblur="this.style.borderColor='rgba(91, 89, 65, 0.2)'; this.style.boxShadow='none';"
+      />
+    </div>
+
+    <!-- Location Filter -->
+    <div style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+      <div>
+        <label for="location-select" style="font-weight: 600; color: #5B5941; margin-right: 10px; display: inline-block;">Location:</label>
+        <select 
+          id="location-select" 
+          name="location"
+          style="padding: 10px 20px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: #fff; font-size: 0.9em; cursor: pointer; min-width: 180px; transition: all 0.3s;"
+          onfocus="this.style.borderColor='#FB8B24';"
+          onblur="this.style.borderColor='rgba(91, 89, 65, 0.2)';"
+        >
+          <option value="">All Locations</option>
+          {% for location in locations %}
+            <option value="{{ location }}" {% if location == selected_location %}selected{% endif %}>{{ location }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <input 
+          type="checkbox" 
+          id="happy-hour-filter" 
+          name="happy_hour" 
+          value="true"
+          {% if happy_hour_only %}checked{% endif %}
+          style="width: 18px; height: 18px; cursor: pointer; accent-color: #FB8B24;"
+        >
+        <label for="happy-hour-filter" style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.9em; color: #5B5941;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FB8B24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span style="font-weight: 500;">Happy Hour Only</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Category Pills -->
+    <div style="margin-bottom: 30px;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span style="font-weight: 600; color: #5B5941; margin-right: 5px;">Categories:</span>
+        
+        <!-- All category -->
+        <div 
+          class="category-pill" 
+          data-value="" 
+          style="padding: 10px 20px; border-radius: 25px; cursor: pointer; transition: all 0.3s; font-size: 0.9em; font-weight: 500; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if not selected_types %}#FB8B24; color: #F7EDE2; border-color: #FB8B24;{% else %}#fff; color: #5B5941;{% endif %}"
+          onmouseover="if(this.style.backgroundColor !== 'rgb(251, 139, 36)') { this.style.backgroundColor='rgba(251, 139, 36, 0.1)'; this.style.borderColor='#FB8B24'; }"
+          onmouseout="if(this.style.backgroundColor !== 'rgb(251, 139, 36)') { this.style.backgroundColor='#fff'; this.style.borderColor='rgba(91, 89, 65, 0.2)'; }"
+        >
+          All
+        </div>
+
         {% for value, label in cuisine_choices %}
-          <option value="{{ value }}" {% if value in selected_types %}selected{% endif %}>{{ label }}</option>
+          <div 
+            class="category-pill" 
+            data-value="{{ value }}"
+            style="padding: 10px 20px; border-radius: 25px; cursor: pointer; transition: all 0.3s; font-size: 0.9em; font-weight: 500; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if value in selected_types %}#FB8B24; color: #F7EDE2; border-color: #FB8B24;{% else %}#fff; color: #5B5941;{% endif %}"
+            onmouseover="if(this.style.backgroundColor !== 'rgb(251, 139, 36)') { this.style.backgroundColor='rgba(251, 139, 36, 0.1)'; this.style.borderColor='#FB8B24'; }"
+            onmouseout="if(this.style.backgroundColor !== 'rgb(251, 139, 36)') { this.style.backgroundColor='#fff'; this.style.borderColor='rgba(91, 89, 65, 0.2)'; }"
+          >
+            {{ label }}
+          </div>
         {% endfor %}
-      </select>
+      </div>
+    </div>
+
+    <!-- Hidden inputs for selected cuisines -->
+    <div id="cuisine-inputs"></div>
   </form>
 
   <script>
     var filterTimeout;
+    var selectedCuisines = new Set({{ selected_types|safe }}.map(String));
+
+    function updateCuisineInputs() {
+      const container = document.getElementById('cuisine-inputs');
+      container.innerHTML = '';
+      selectedCuisines.forEach(cuisine => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'cuisine_type';
+        input.value = cuisine;
+        container.appendChild(input);
+      });
+    }
+
+    function updatePillStyles() {
+      document.querySelectorAll('.category-pill').forEach(pill => {
+        const value = pill.getAttribute('data-value');
+        const isSelected = value === '' ? selectedCuisines.size === 0 : selectedCuisines.has(value);
+        
+        if (isSelected) {
+          pill.style.backgroundColor = '#FB8B24';
+          pill.style.color = '#F7EDE2';
+          pill.style.borderColor = '#FB8B24';
+        } else {
+          pill.style.backgroundColor = '#fff';
+          pill.style.color = '#5B5941';
+          pill.style.borderColor = 'rgba(91, 89, 65, 0.2)';
+        }
+      });
+    }
 
     function filterRestaurants() {
       var form = document.getElementById('filter-form');
@@ -37,21 +144,49 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-      var select = document.getElementById('cuisine_type');
       var searchBar = document.getElementById('search-bar');
+      var locationSelect = document.getElementById('location-select');
+      var happyHourCheckbox = document.getElementById('happy-hour-filter');
 
-      // Make multi-select work with click only (no Ctrl/Cmd needed)
-      if (select) {
-        select.addEventListener('mousedown', function(e) {
-          e.preventDefault();
-          var option = e.target;
-          if (option.tagName.toLowerCase() === 'option') {
-            option.selected = !option.selected;
-            option.parentNode.focus();
-            filterRestaurants();
+      // Category pill click handlers
+      document.querySelectorAll('.category-pill').forEach(pill => {
+        pill.addEventListener('click', function() {
+          const value = this.getAttribute('data-value');
+          
+          if (value === '') {
+            // "All" button clicked - clear all selections
+            selectedCuisines.clear();
+          } else {
+            // Toggle this cuisine
+            if (selectedCuisines.has(value)) {
+              selectedCuisines.delete(value);
+            } else {
+              selectedCuisines.add(value);
+            }
           }
+          
+          updateCuisineInputs();
+          updatePillStyles();
+          filterRestaurants();
+        });
+      });
+
+      // Location dropdown change handler
+      if (locationSelect) {
+        locationSelect.addEventListener('change', function() {
+          filterRestaurants();
         });
       }
+
+      // Happy hour checkbox change handler
+      if (happyHourCheckbox) {
+        happyHourCheckbox.addEventListener('change', function() {
+          filterRestaurants();
+        });
+      }
+
+      // Initialize cuisine inputs
+      updateCuisineInputs();
 
       // Real-time search - trigger on every keystroke
       if (searchBar) {
@@ -65,51 +200,163 @@
     });
   </script>
 
-  <button class="secondary-btn" onclick="document.getElementById('add-restaurant-form').style.display='block'">Add Restaurant</button>
-  <div id="add-restaurant-form" style="display:none; margin-top:20px; border:1px solid #ccc; padding:20px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h3 style="margin: 0;">Restaurants</h3>
+    <button class="secondary-btn" onclick="document.getElementById('add-restaurant-form').style.display='block'" style="padding: 10px 20px; font-size: 0.9em;">+ Add Restaurant</button>
+  </div>
+
+  <div id="add-restaurant-form" style="display:none; margin-bottom:30px; border:2px solid rgba(91, 89, 65, 0.2); border-radius: 10px; padding:25px; background-color: rgba(251, 139, 36, 0.02);">
     <h3>Add a Restaurant</h3>
-    {% comment %}
-    <div style="margin-bottom: 15px;">
-      <label>Search Location:</label><br>
-      <input id="location-autocomplete" type="text" placeholder="Start typing a city or address..." style="width: 100%; padding: 8px;">
-      <small>This will autofill City, Province, and Country fields</small>
-    </div>
-    {% endcomment %}
+    
+    {% if form_errors %}
+      <div style="background-color: #fee; border: 2px solid #c33; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <strong style="color: #c33;">Error:</strong>
+        {% for error in form_errors %}
+          <div style="color: #c33; margin-top: 5px;">{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    
     <form method="post" id="restaurant-form">
       {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">Submit</button>
-      <button type="button" onclick="document.getElementById('add-restaurant-form').style.display='none'">Cancel</button>
+      
+      <!-- Step 1: Location Search -->
+      <div id="location-step">
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600; display: block; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#FB8B24"/>
+            </svg>
+            Search Restaurant Address:
+          </label>
+          <input 
+            id="location-autocomplete" 
+            type="text" 
+            placeholder="Start typing the restaurant address..." 
+            style="width: 100%; padding: 14px 18px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px; font-size: 1em; transition: all 0.3s;"
+            onfocus="this.style.borderColor='#FB8B24';"
+            onblur="this.style.borderColor='rgba(91, 89, 65, 0.2)';"
+          >
+          <small style="color: rgba(91, 89, 65, 0.6); display: block; margin-top: 8px;">Select from the dropdown suggestions to continue</small>
+        </div>
+      </div>
+
+      <!-- Step 2: Restaurant Details (hidden until location selected) -->
+      <div id="details-step" style="display: none;">
+        <div style="padding: 15px; background-color: rgba(251, 139, 36, 0.1); border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #FB8B24;">
+          <div style="font-size: 0.9em; color: #5B5941;">
+            <strong>Selected Address:</strong>
+            <div id="selected-address" style="margin-top: 5px; font-weight: 600;"></div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label style="font-weight: 600; display: block; margin-bottom: 8px;">Restaurant Name:</label>
+          <input 
+            type="text" 
+            name="name" 
+            required 
+            style="width: 100%; padding: 12px 15px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px; font-size: 1em;"
+            placeholder="e.g., Joe's Pizza"
+          >
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600; display: block; margin-bottom: 8px;">Cuisine Type:</label>
+          <select 
+            name="cuisine_type" 
+            required 
+            style="width: 100%; padding: 12px 15px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px; font-size: 1em; background-color: #fff;"
+          >
+            <option value="">Select cuisine type...</option>
+            {% for value, label in cuisine_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600; display: block; margin-bottom: 8px;">Happy Hour <span style="font-weight: 400; color: rgba(91, 89, 65, 0.5);">(optional)</span>:</label>
+          <textarea 
+            name="happy_hour" 
+            rows="3" 
+            style="width: 100%; padding: 12px 15px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px; font-size: 1em; font-family: inherit; resize: vertical;"
+            placeholder="e.g., Mon-Fri 3-6pm: $5 appetizers, $6 cocktails"
+          ></textarea>
+          <small style="color: rgba(91, 89, 65, 0.6); display: block; margin-top: 5px;">Add details about happy hour days, times, and specials</small>
+        </div>
+
+        <!-- Hidden address fields -->
+        <input type="hidden" name="address_line1" id="hidden-address1">
+        <input type="hidden" name="address_line2" id="hidden-address2">
+        <input type="hidden" name="city" id="hidden-city">
+        <input type="hidden" name="province" id="hidden-province">
+        <input type="hidden" name="postal_code" id="hidden-postal">
+        <input type="hidden" name="country" id="hidden-country">
+
+        <div style="display: flex; gap: 10px;">
+          <button type="submit" style="flex: 1;">Add Restaurant</button>
+          <button type="button" onclick="resetAddForm()" style="flex: 1; background-color: rgba(91, 89, 65, 0.1); color: #5B5941;">Cancel</button>
+        </div>
+      </div>
     </form>
   </div>
 
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initAutocomplete" async defer></script>
   <script>
+    function resetAddForm() {
+      document.getElementById('add-restaurant-form').style.display = 'none';
+      document.getElementById('location-autocomplete').value = '';
+      document.getElementById('restaurant-form').reset();
+      document.getElementById('location-step').style.display = 'block';
+      document.getElementById('details-step').style.display = 'none';
+    }
+
     function initAutocomplete() {
       const input = document.getElementById('location-autocomplete');
+      if (!input) {
+        console.error('Location autocomplete input not found');
+        return;
+      }
+
       const autocomplete = new google.maps.places.Autocomplete(input, {
-        types: ['(cities)'],
-        componentRestrictions: { country: 'ca' } // Restrict to Canada, remove to allow worldwide
+        types: ['establishment', 'geocode'],
+        // Uncomment to restrict to specific country: componentRestrictions: { country: 'ca' }
       });
 
       autocomplete.addListener('place_changed', function() {
+        console.log('Place changed event triggered');
         const place = autocomplete.getPlace();
+        console.log('Place object:', place);
+        
         if (!place.address_components) {
+          console.log('No address components found');
           return;
         }
 
+        let streetNumber = '';
+        let route = '';
         let city = '';
         let province = '';
         let country = '';
         let postalCode = '';
+        let addressLine2 = '';
 
         for (const component of place.address_components) {
           const types = component.types;
-          if (types.includes('locality')) {
+          if (types.includes('street_number')) {
+            streetNumber = component.long_name;
+          }
+          if (types.includes('route')) {
+            route = component.long_name;
+          }
+          if (types.includes('subpremise')) {
+            addressLine2 = component.long_name;
+          }
+          if (types.includes('locality') || types.includes('postal_town')) {
             city = component.long_name;
           }
           if (types.includes('administrative_area_level_1')) {
-            province = component.long_name;
+            province = component.short_name;
           }
           if (types.includes('country')) {
             country = component.long_name;
@@ -119,42 +366,131 @@
           }
         }
 
-        // Fill in the form fields
-        const cityField = document.querySelector('#restaurant-form input[name="city"]');
-        const provinceField = document.querySelector('#restaurant-form input[name="province"]');
-        const countryField = document.querySelector('#restaurant-form input[name="country"]');
-        const postalField = document.querySelector('#restaurant-form input[name="postal_code"]');
+        const address1 = `${streetNumber} ${route}`.trim();
+        console.log('Parsed address:', { address1, city, province, country, postalCode });
 
-        if (cityField) cityField.value = city;
-        if (provinceField) provinceField.value = province;
-        if (countryField) countryField.value = country;
-        if (postalField && postalCode) postalField.value = postalCode;
+        // Fill hidden fields
+        document.getElementById('hidden-address1').value = address1;
+        document.getElementById('hidden-address2').value = addressLine2;
+        document.getElementById('hidden-city').value = city;
+        document.getElementById('hidden-province').value = province;
+        document.getElementById('hidden-postal').value = postalCode;
+        document.getElementById('hidden-country').value = country;
+
+        // Show selected address
+        const addressDisplay = `${address1}${addressLine2 ? ', ' + addressLine2 : ''}, ${city}, ${province} ${postalCode}, ${country}`;
+        document.getElementById('selected-address').textContent = addressDisplay;
+
+        console.log('About to hide location-step and show details-step');
+        // Hide location step, show details step
+        document.getElementById('location-step').style.display = 'none';
+        document.getElementById('details-step').style.display = 'block';
+        console.log('Steps toggled');
+
+        // Focus on restaurant name field
+        document.querySelector('input[name="name"]').focus();
       });
     }
+
+    // Load Google Maps API after page loads
+    window.addEventListener('load', function() {
+      if (typeof google === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places&callback=initAutocomplete';
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      } else {
+        initAutocomplete();
+      }
+    });
   </script>
 
-  <h3>Restaurants</h3>
   <div id="restaurants-list">
-    <ul>
-      {% for restaurant in page_obj %}
-        <li>
-          <strong><a href="{% url 'restaurant_detail' restaurant.id %}">{{ restaurant.name }}</a></strong> ({{ restaurant.cuisine_type }})<br>
-          {{ restaurant.address_line1 }}{% if restaurant.address_line2 %}, {{ restaurant.address_line2 }}{% endif %}, {{ restaurant.city }}, {{ restaurant.province }}, {{ restaurant.postal_code }}, {{ restaurant.country }}
-        </li>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 30px;">
+      {% for item in restaurants_with_ratings %}
+        <div class="card" style="padding: 15px 18px; transition: all 0.3s; cursor: pointer; border: 2px solid transparent; display: inline-block;" 
+             onclick="window.location.href='{% url 'restaurant_detail' item.restaurant.id %}';"
+             onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.12)'; this.style.borderColor='#FB8B24';" 
+             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0,0,0,0.1)'; this.style.borderColor='transparent';">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #5B5941; font-size: 1.05em; white-space: nowrap;">{{ item.restaurant.name }}</h4>
+              {% if item.avg_rating %}
+                <div style="display: flex; align-items: center; gap: 3px; flex-shrink: 0;">
+                  <span style="color: #FB8B24; font-size: 1em;">★</span>
+                  <span style="font-weight: 600; color: #5B5941; font-size: 0.9em;">{{ item.avg_rating }}</span>
+                  <span style="color: rgba(91, 89, 65, 0.5); font-size: 0.75em;">({{ item.review_count }})</span>
+                </div>
+              {% endif %}
+              {% if item.restaurant.happy_hour %}
+                <div style="display: inline-flex; align-items: center; gap: 3px; background-color: rgba(251, 139, 36, 0.15); color: #FB8B24; padding: 2px 8px; border-radius: 10px; font-size: 0.7em; font-weight: 600; flex-shrink: 0;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  HH
+                </div>
+              {% endif %}
+            </div>
+            <div style="display: inline-block; padding: 3px 10px; background-color: rgba(251, 139, 36, 0.15); color: #FB8B24; border-radius: 12px; font-size: 0.75em; font-weight: 600; margin-bottom: 8px;">
+              {{ item.restaurant.cuisine_type }}
+            </div>
+            <a href="https://www.google.com/maps/search/?api=1&query={{ item.restaurant.address_line1|urlencode }}{% if item.restaurant.address_line2 %},{{ item.restaurant.address_line2|urlencode }}{% endif %},{{ item.restaurant.city|urlencode }},{{ item.restaurant.province|urlencode }},{{ item.restaurant.postal_code|urlencode }},{{ item.restaurant.country|urlencode }}" 
+               target="_blank" 
+               onclick="event.stopPropagation(); event.preventDefault(); window.open(this.href, '_blank');"
+               style="text-decoration: none; display: flex; align-items: center; gap: 5px; margin-top: 6px;"
+               onmouseover="this.querySelector('span').style.color='#FB8B24'; this.querySelector('svg').style.stroke='#FB8B24';"
+               onmouseout="this.querySelector('span').style.color='rgba(91, 89, 65, 0.6)'; this.querySelector('svg').style.stroke='rgba(91, 89, 65, 0.6)';">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.6)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: all 0.3s;">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <span style="font-size: 0.8em; color: rgba(91, 89, 65, 0.6); white-space: nowrap; transition: all 0.3s;">{{ item.restaurant.city }}, {{ item.restaurant.province }}</span>
+            </a>
+        </div>
       {% empty %}
-        <li>No restaurants found.</li>
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: rgba(91, 89, 65, 0.5);">
+          <p style="font-size: 1.2em; margin: 0;">No restaurants found</p>
+          <p style="font-size: 0.9em; margin-top: 5px;">Try adjusting your search or filters</p>
+        </div>
       {% endfor %}
-    </ul>
+    </div>
 
-    <div style="margin-top:20px;">
-      {% if page_obj.has_previous %}
-        <a href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Previous</a>
-      {% endif %}
-      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-      {% if page_obj.has_next %}
-        <a href="?q={{ query }}&page={{ page_obj.next_page_number }}">Next</a>
-      {% endif %}
-    </div>
-    </div>
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+      <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 30px;">
+        {% if page_obj.has_previous %}
+          <a href="?q={{ query }}&page={{ page_obj.previous_page_number }}" 
+             style="padding: 10px 20px; background-color: #FB8B24; color: #F7EDE2; border-radius: 8px; text-decoration: none; font-weight: 500; transition: all 0.3s;"
+             onmouseover="this.style.backgroundColor='#e07a1f';"
+             onmouseout="this.style.backgroundColor='#FB8B24';">
+            ← Previous
+          </a>
+        {% endif %}
+        
+        <span style="font-weight: 500; color: #5B5941;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        
+        {% if page_obj.has_next %}
+          <a href="?q={{ query }}&page={{ page_obj.next_page_number }}" 
+             style="padding: 10px 20px; background-color: #FB8B24; color: #F7EDE2; border-radius: 8px; text-decoration: none; font-weight: 500; transition: all 0.3s;"
+             onmouseover="this.style.backgroundColor='#e07a1f';"
+             onmouseout="this.style.backgroundColor='#FB8B24';">
+            Next →
+          </a>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
+</div>
+
+{% if form_errors %}
+<script>
+  // Automatically show the form when there are errors
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('add-restaurant-form').style.display = 'block';
+    document.getElementById('add-restaurant-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+</script>
+{% endif %}
+
 {% endblock %}

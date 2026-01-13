@@ -1,33 +1,48 @@
 # BiteBook
 
-A Django-based web application for restaurant and menu item reviews, inspired by Letterboxd but for food. Users can discover restaurants, review menu items with detailed ratings, and share their experiences on a public feed.
+A Django-based web application for restaurant and menu item reviews, inspired by Letterboxd but for food. Users can discover restaurants, review menu items with detailed ratings, share experiences, and build flavor profiles based on their preferences.
 
 ## Features
 
 - **User Authentication**: Sign up, log in, and manage accounts with Django's built-in auth system.
 - **Restaurant Management**:
-  - Add new restaurants with unique address validation.
-  - Search and filter restaurants by name, cuisine type, or location.
+  - Add new restaurants with Google Places API autocomplete for verified addresses.
+  - Search and filter restaurants by name, cuisine type, location, or happy hour availability.
   - Real-time AJAX-powered search with pagination.
+  - Duplicate address prevention with validation.
+  - Happy hour information display.
 - **Menu Management**:
   - Create menus for restaurants.
   - Add menu items with name, description, and price.
+  - View aggregate ratings for menu items.
 - **Review System**:
   - Rate menu items on a scale of 1.0 to 10.0 (to one decimal place).
-  - Write detailed reviews.
+  - Write detailed reviews with optional images.
   - Choose to make reviews public or anonymous.
+  - Like reviews from other users.
 - **Posts Feed**:
   - Public reviews appear as posts on everyone's feed.
-  - Posts have descriptive titles (e.g., "username reviewed item at restaurant").
   - Create personal diary entries for general food thoughts and experiences.
   - View recent posts with ratings and review text.
+- **User Profiles**:
+  - Letterboxd-style profile pages with large avatars.
+  - Favorite restaurants and Want to Try lists.
+  - Flavor profile showing top 3 cuisine preferences.
+  - Top Reviewer badge for active users.
+  - Follow/unfollow other users.
+- **Enhanced UI/UX**:
+  - DoorDash-style category filter pills.
+  - Compact restaurant cards with ratings, reviews, and happy hour badges.
+  - Clickable addresses that open in Google Maps.
+  - Responsive design with custom color scheme.
 
 ## Tech Stack
 
-- **Backend**: Django 5.2.6
+- **Backend**: Django 5.2.6, Python 3.13.2
 - **Database**: SQLite
-- **Frontend**: HTML, CSS, JavaScript (with AJAX for real-time search)
-- **Other**: Google Places API (commented out for potential location autocomplete)
+- **Frontend**: HTML, CSS, JavaScript (with AJAX for real-time filtering)
+- **APIs**: Google Places API, Google Maps JavaScript API
+- **Color Scheme**: #F7EDE2 (background), #5B5941 (text), #FB8B24 (accent)
 
 ## Installation
 
@@ -48,7 +63,17 @@ A Django-based web application for restaurant and menu item reviews, inspired by
    pip install -r requirements.txt
    ```
 
-4. **Run migrations**:
+4. **Configure Google Maps API** (required for address autocomplete):
+   - Create a `config/local_settings.py` file:
+     ```python
+     # Local settings - DO NOT COMMIT THIS FILE
+     GOOGLE_MAPS_API_KEY = 'your-api-key-here'
+     ```
+   - Get your API key from [Google Cloud Console](https://console.cloud.google.com/)
+   - Enable these APIs: Maps JavaScript API, Places API
+   - The `local_settings.py` file is already in `.gitignore` for security
+
+5. **Run migrations**:
    ```bash
    python manage.py migrate
    ```

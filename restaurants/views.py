@@ -1,17 +1,21 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
-
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from .models import Restaurant, Menu, MenuItem, Review, Profile, Follow
+from .models import Restaurant, Menu, MenuItem, Review, Profile, Follow, ReviewLike, RestaurantList
 from posts.models import Post
 from django import forms
+from django.http import JsonResponse
 
 class RestaurantForm(forms.ModelForm):
 	class Meta:
 		model = Restaurant
 		fields = [
-			'name', 'cuisine_type', 'address_line1', 'address_line2', 'city', 'province', 'postal_code', 'country'
+			'name', 'cuisine_type', 'address_line1', 'address_line2', 'city', 'province', 'postal_code', 'country', 'happy_hour'
 		]
+		widgets = {
+			'happy_hour': forms.Textarea(attrs={'rows': 3, 'placeholder': 'e.g., Mon-Fri 3-6pm: $5 appetizers, $6 cocktails'})
+		}
 
 	def clean(self):
 		cleaned_data = super().clean()
@@ -58,9 +62,13 @@ from django.core.paginator import Paginator
 @login_required
 
 def restaurant_search(request):
+	from django.db.models import Avg
+	from django.conf import settings
 	query = request.GET.get('q', '')
 	page_number = request.GET.get('page', 1)
 	selected_types = request.GET.getlist('cuisine_type')
+	selected_location = request.GET.get('location', '')
+	happy_hour_only = request.GET.get('happy_hour') == 'true'
 	restaurants = Restaurant.objects.all()
 	if query:
 		restaurants = restaurants.filter(
@@ -75,8 +83,31 @@ def restaurant_search(request):
 		)
 	if selected_types:
 		restaurants = restaurants.filter(cuisine_type__in=selected_types)
+	if selected_location:
+		restaurants = restaurants.filter(city__iexact=selected_location)
+	if happy_hour_only:
+		restaurants = restaurants.exclude(happy_hour__isnull=True).exclude(happy_hour='')
 	paginator = Paginator(restaurants.order_by('-created_at'), 10)
 	page_obj = paginator.get_page(page_number)
+	
+	# Calculate ratings for each restaurant
+	restaurants_with_ratings = []
+	for restaurant in page_obj:
+		avg_rating = None
+		review_count = 0
+		if hasattr(restaurant, 'menu'):
+			menu_items = restaurant.menu.items.all()
+			reviews = Review.objects.filter(menu_item__in=menu_items)
+			review_count = reviews.count()
+			if review_count > 0:
+				avg_rating = reviews.aggregate(Avg('rating'))['rating__avg']
+		restaurants_with_ratings.append({
+			'restaurant': restaurant,
+			'avg_rating': round(avg_rating, 1) if avg_rating else None,
+			'review_count': review_count
+		})
+	
+	form_errors = None
 	if request.method == 'POST':
 		form = RestaurantForm(request.POST)
 		if form.is_valid():
@@ -84,25 +115,36 @@ def restaurant_search(request):
 			restaurant.created_by = request.user
 			restaurant.save()
 			return redirect('restaurant_search')
+		else:
+			form_errors = form.non_field_errors()
 	else:
 		form = RestaurantForm()
 	# Get all cuisine types in use for the filter dropdown
 	cuisine_choices = Restaurant.CUISINE_CHOICES
+	# Get unique cities for location filter
+	locations = Restaurant.objects.values_list('city', flat=True).distinct().order_by('city')
 	
 	# Check if this is an AJAX request
 	if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
 		# Return only the restaurant list HTML
 		return render(request, 'restaurants_list_partial.html', {
+			'restaurants_with_ratings': restaurants_with_ratings,
 			'page_obj': page_obj,
 			'query': query,
 		})
 	
 	return render(request, 'restaurant_search.html', {
 		'form': form,
+		'restaurants_with_ratings': restaurants_with_ratings,
 		'page_obj': page_obj,
 		'query': query,
 		'cuisine_choices': cuisine_choices,
+		'locations': locations,
 		'selected_types': selected_types,
+		'selected_location': selected_location,
+		'form_errors': form_errors,
+		'happy_hour_only': happy_hour_only,
+		'google_maps_api_key': settings.GOOGLE_MAPS_API_KEY,
 	})
 
 
@@ -112,10 +154,12 @@ def restaurant_detail(request, restaurant_id):
 	
 	# Calculate rating statistics if menu exists
 	rating_stats = None
+	review_count = 0
 	if hasattr(restaurant, 'menu'):
 		from django.db.models import Avg, Min, Max
 		menu_items = restaurant.menu.items.all()
 		all_reviews = Review.objects.filter(menu_item__in=menu_items)
+		review_count = all_reviews.count()
 		if all_reviews.exists():
 			stats = all_reviews.aggregate(
 				avg_rating=Avg('rating'),
@@ -128,9 +172,25 @@ def restaurant_detail(request, restaurant_id):
 				'max': round(stats['max_rating'], 1) if stats['max_rating'] else 0
 			}
 	
+	# Check if restaurant is in user's lists
+	is_favorite = RestaurantList.objects.filter(
+		user=request.user,
+		restaurant=restaurant,
+		list_type='favorite'
+	).exists()
+	
+	is_want_to_try = RestaurantList.objects.filter(
+		user=request.user,
+		restaurant=restaurant,
+		list_type='want_to_try'
+	).exists()
+	
 	return render(request, 'restaurant_detail.html', {
 		'restaurant': restaurant,
-		'rating_stats': rating_stats
+		'rating_stats': rating_stats,
+		'review_count': review_count,
+		'is_favorite': is_favorite,
+		'is_want_to_try': is_want_to_try
 	})
 
 
@@ -171,7 +231,34 @@ def view_menu(request, restaurant_id):
 			MenuItem.objects.create(menu=menu, name=name, description=description, price=price)
 		return redirect('view_menu', restaurant_id=restaurant_id)
 	
-	return render(request, 'view_menu.html', {'restaurant': restaurant, 'menu': menu})
+	# Calculate rating stats for each menu item
+	menu_items_with_stats = []
+	for item in menu.items.all():
+		has_photos = item.reviews.filter(image__isnull=False).exists()
+		
+		# Add like information for each review
+		reviews_with_likes = []
+		for review in item.reviews.all():
+			review_data = {
+				'review': review,
+				'like_count': review.likes.count(),
+				'user_has_liked': review.likes.filter(user=request.user).exists()
+			}
+			reviews_with_likes.append(review_data)
+		
+		item_data = {
+			'item': item,
+			'rating_stats': item.get_rating_stats(),
+			'has_photos': has_photos,
+			'reviews_with_likes': reviews_with_likes
+		}
+		menu_items_with_stats.append(item_data)
+	
+	return render(request, 'view_menu.html', {
+		'restaurant': restaurant,
+		'menu': menu,
+		'menu_items_with_stats': menu_items_with_stats
+	})
 
 
 @login_required
@@ -193,7 +280,7 @@ def add_review(request, menu_item_id):
 		)
 		if is_public:
 			username = request.user.username if is_public else 'Anonymous'
-			title = f"{username} reviewed {menu_item.name} at {menu_item.menu.restaurant.name}"
+			title = f"{username} reviewed {menu_item.name}"
 			Post.objects.create(
 				post_type='review',
 				title=title,
@@ -209,8 +296,35 @@ def add_review(request, menu_item_id):
 
 @login_required
 def feed(request):
-	posts = Post.objects.all().order_by('-created_at')[:20]  # Show latest 20
-	return render(request, 'feed.html', {'posts': posts})
+	posts = Post.objects.select_related('user', 'user__profile', 'menu_item').all().order_by('-created_at')[:20]
+	
+	# For each post, get the associated review and like info
+	posts_with_likes = []
+	for post in posts:
+		post_data = {
+			'post': post,
+			'review': None,
+			'like_count': 0,
+			'user_has_liked': False,
+			'is_top_reviewer': post.user.profile.is_top_reviewer() if hasattr(post.user, 'profile') else False
+		}
+		
+		# Find the associated review if it's a review post
+		if post.post_type == 'review' and post.menu_item:
+			review = Review.objects.filter(
+				menu_item=post.menu_item,
+				user=post.user,
+				rating=post.rating
+			).first()
+			
+			if review:
+				post_data['review'] = review
+				post_data['like_count'] = review.likes.count()
+				post_data['user_has_liked'] = review.likes.filter(user=request.user).exists()
+		
+		posts_with_likes.append(post_data)
+	
+	return render(request, 'feed.html', {'posts_with_likes': posts_with_likes})
 
 @login_required
 def user_profile(request):
@@ -219,12 +333,36 @@ def user_profile(request):
 	profile, created = Profile.objects.get_or_create(user=request.user)
 	following_count = Follow.objects.filter(follower=request.user).count()
 	followers_count = Follow.objects.filter(following=request.user).count()
+	is_top_reviewer = profile.is_top_reviewer()
+	
+	# Get favorite and want-to-try restaurants
+	favorite_restaurants = RestaurantList.objects.filter(
+		user=request.user,
+		list_type='favorite'
+	).select_related('restaurant')
+	
+	want_to_try_restaurants = RestaurantList.objects.filter(
+		user=request.user,
+		list_type='want_to_try'
+	).select_related('restaurant')
+	
+	# Calculate flavor profile from favorite restaurants
+	from collections import Counter
+	favorite_cuisines = [fav.restaurant.cuisine_type for fav in favorite_restaurants]
+	cuisine_counts = Counter(favorite_cuisines)
+	# Get top 3 cuisines
+	flavor_profile = cuisine_counts.most_common(3) if cuisine_counts else []
+	
 	return render(request, 'user_profile.html', {
 		'user_posts': user_posts,
 		'user_reviews': user_reviews,
 		'profile': profile,
 		'following_count': following_count,
-		'followers_count': followers_count
+		'followers_count': followers_count,
+		'is_top_reviewer': is_top_reviewer,
+		'favorite_restaurants': favorite_restaurants,
+		'want_to_try_restaurants': want_to_try_restaurants,
+		'flavor_profile': flavor_profile,
 	})
 
 @login_required
@@ -278,6 +416,26 @@ def view_user_profile(request, username):
 	followers_count = Follow.objects.filter(following=profile_user).count()
 	is_following = Follow.objects.filter(follower=request.user, following=profile_user).exists()
 	is_own_profile = request.user == profile_user
+	is_top_reviewer = profile.is_top_reviewer()
+	
+	# Get favorite and want-to-try restaurants for this user
+	favorite_restaurants = RestaurantList.objects.filter(
+		user=profile_user,
+		list_type='favorite'
+	).select_related('restaurant')
+	
+	want_to_try_restaurants = RestaurantList.objects.filter(
+		user=profile_user,
+		list_type='want_to_try'
+	).select_related('restaurant')
+	
+	# Calculate flavor profile from favorite restaurants
+	from collections import Counter
+	favorite_cuisines = [fav.restaurant.cuisine_type for fav in favorite_restaurants]
+	cuisine_counts = Counter(favorite_cuisines)
+	# Get top 3 cuisines
+	flavor_profile = cuisine_counts.most_common(3) if cuisine_counts else []
+	
 	return render(request, 'view_user_profile.html', {
 		'profile_user': profile_user,
 		'user_posts': user_posts,
@@ -286,5 +444,59 @@ def view_user_profile(request, username):
 		'following_count': following_count,
 		'followers_count': followers_count,
 		'is_following': is_following,
-		'is_own_profile': is_own_profile
+		'is_own_profile': is_own_profile,
+		'is_top_reviewer': is_top_reviewer,
+		'favorite_restaurants': favorite_restaurants,
+		'want_to_try_restaurants': want_to_try_restaurants,
+		'flavor_profile': flavor_profile,
 	})
+
+
+@login_required
+def like_review(request, review_id):
+	review = get_object_or_404(Review, id=review_id)
+	like, created = ReviewLike.objects.get_or_create(review=review, user=request.user)
+	
+	if not created:
+		# Unlike if already liked
+		like.delete()
+		liked = False
+	else:
+		liked = True
+	
+	# Return JSON for AJAX or redirect for regular requests
+	if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+		return JsonResponse({
+			'liked': liked,
+			'like_count': review.likes.count()
+		})
+	
+	# Redirect back to the previous page
+	return redirect(request.META.get('HTTP_REFERER', 'feed'))
+
+
+@login_required
+def toggle_restaurant_list(request, restaurant_id, list_type):
+	restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+	
+	if list_type not in ['favorite', 'want_to_try']:
+		return redirect('restaurant_detail', restaurant_id=restaurant_id)
+	
+	list_item = RestaurantList.objects.filter(
+		user=request.user,
+		restaurant=restaurant,
+		list_type=list_type
+	).first()
+	
+	if list_item:
+		# Remove from list
+		list_item.delete()
+	else:
+		# Add to list
+		RestaurantList.objects.create(
+			user=request.user,
+			restaurant=restaurant,
+			list_type=list_type
+		)
+	
+	return redirect('restaurant_detail', restaurant_id=restaurant_id)

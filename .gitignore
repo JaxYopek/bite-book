@@ -6,6 +6,9 @@ __pycache__
 db.sqlite3
 media
 
+# Local settings with sensitive data
+config/local_settings.py
+
 # Backup files # 
 *.bak 
 

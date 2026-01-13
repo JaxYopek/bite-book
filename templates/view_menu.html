@@ -5,26 +5,76 @@
   <h2>Menu for {{ restaurant.name }}</h2>
   
   <h3>Menu Items</h3>
-  <ul>
-    {% for item in menu.items.all %}
-      <li class="card">
-        <strong>{{ item.name }}</strong> - ${{ item.price }}
-        {% if item.description %}<br>{{ item.description }}{% endif %}
-        <br><a href="{% url 'add_review' item.id %}"><button>Review Item</button></a>
-        {% if item.reviews.exists %}
-          <h4>Reviews:</h4>
-          <ul style="list-style-type: none;">
-            {% for review in item.reviews.all %}
-              <li class="card">
-                <strong>{% if review.user %}{{ review.user.username }}{% else %}<span class="anonymous">Anonymous</span>{% endif %}</strong>
-                <p class="rating">{{ review.rating|floatformat:1 }} stars</p>
-                {% if review.review_text %}<p>{{ review.review_text }}</p>{% endif %}
+  <ul style="list-style-type: none; padding-left: 0;">
+    {% for item_data in menu_items_with_stats %}
+      <li class="card" style="padding: 15px; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+          <div style="flex: 1;">
+            <strong style="font-size: 1.1em;">{{ item_data.item.name }}</strong> - <span style="color: #FB8B24; font-weight: 500;">${{ item_data.item.price }}</span>
+            {% if item_data.item.description %}<br><span style="font-size: 0.9em; color: rgba(91, 89, 65, 0.7);">{{ item_data.item.description }}</span>{% endif %}
+          </div>
+          {% if item_data.rating_stats %}
+          <div style="text-align: right; min-width: 120px; margin-left: 15px;">
+            <div style="font-size: 1.3em; font-weight: bold; color: #FB8B24;">{{ item_data.rating_stats.avg }}/10</div>
+            <div style="font-size: 0.75em; color: rgba(91, 89, 65, 0.6);">{{ item_data.rating_stats.min }} - {{ item_data.rating_stats.max }}</div>
+          </div>
+          {% endif %}
+        </div>
+        
+        <div style="margin-top: 10px;">
+          <a href="{% url 'add_review' item_data.item.id %}"><button style="padding: 8px 15px; font-size: 0.9em;">Review Item</button></a>
+          {% if item_data.item.reviews.exists %}
+            <button onclick="toggleReviews('reviews-{{ item_data.item.id }}')" style="margin-left: 10px; background-color: #5B5941; padding: 8px 15px; font-size: 0.9em;">
+              View Reviews ({{ item_data.item.reviews.count }})
+            </button>
+          {% endif %}
+          {% if item_data.has_photos %}
+            <button onclick="togglePhotos('photos-{{ item_data.item.id }}')" style="margin-left: 10px; background-color: #FB8B24; padding: 8px 15px; font-size: 0.9em;">
+              View Photos
+            </button>
+          {% endif %}
+        </div>
+        
+        {% if item_data.item.reviews.exists %}
+          <div id="reviews-{{ item_data.item.id }}" style="display: none; margin-top: 10px; padding: 10px; background-color: rgba(91, 89, 65, 0.05); border-radius: 5px;">
+            <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+              {% for review_data in item_data.reviews_with_likes %}
+                <li style="padding: 8px 0; border-bottom: 1px solid rgba(91, 89, 65, 0.1);">
+                  <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                      <strong style="font-size: 0.9em;">{% if review_data.review.user %}{{ review_data.review.user.username }}{% else %}<span class="anonymous">Anonymous</span>{% endif %}</strong>
+                      <span style="color: #FB8B24; font-weight: 500; margin-left: 10px; font-size: 0.9em;">{{ review_data.review.rating|floatformat:1 }}/10</span>
+                      {% if review_data.review.review_text %}<p style="margin: 5px 0; font-size: 0.9em;">{{ review_data.review.review_text }}</p>{% endif %}
+                      {% if review_data.review.image %}
+                        <img src="{{ review_data.review.image.url }}" alt="Review photo" style="max-width: 250px; border-radius: 5px; margin-top: 5px;">
+                      {% endif %}
+                    </div>
+                    <a href="{% url 'like_review' review_data.review.id %}" id="like-btn-{{ review_data.review.id }}" style="display: flex; align-items: center; gap: 3px; text-decoration: none; margin-left: 10px; cursor: pointer;" onclick="likeReview(event, {{ review_data.review.id }}, {{ review_data.user_has_liked|yesno:'true,false' }})">
+                      <svg id="like-icon-{{ review_data.review.id }}" width="16" height="16" viewBox="0 0 24 24" fill="{% if review_data.user_has_liked %}#FB8B24{% else %}none{% endif %}" stroke="{% if review_data.user_has_liked %}#FB8B24{% else %}rgba(91, 89, 65, 0.6){% endif %}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      </svg>
+                      <span id="like-count-{{ review_data.review.id }}" style="color: rgba(91, 89, 65, 0.7); font-size: 0.85em;">{{ review_data.like_count }}</span>
+                    </a>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+          
+          <div id="photos-{{ item_data.item.id }}" style="display: none; margin-top: 10px; padding: 10px; background-color: rgba(251, 139, 36, 0.05); border-radius: 5px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+              {% for review in item_data.item.reviews.all %}
                 {% if review.image %}
-                  <img src="{{ review.image.url }}" alt="Review photo" style="max-width: 300px; border-radius: 8px; margin-top: 10px;">
+                  <div style="position: relative;">
+                    <img src="{{ review.image.url }}" alt="Review photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 5px; cursor: pointer;" onclick="openImageModal('{{ review.image.url }}')"/>
+                    <div style="position: absolute; bottom: 5px; left: 5px; background: rgba(0,0,0,0.6); color: white; padding: 3px 8px; border-radius: 3px; font-size: 0.8em;">
+                      {% if review.user %}{{ review.user.username }}{% else %}Anonymous{% endif %}
+                    </div>
+                  </div>
                 {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
+              {% endfor %}
+            </div>
+          </div>
         {% endif %}
       </li>
     {% empty %}
@@ -36,7 +86,7 @@
   <form method="post">
     {% csrf_token %}
     <label>Name:</label>
-    <input type="text" name="name" required>
+    <input type="text" name="name" required style="text-transform: capitalize;">
     <label>Description (optional):</label>
     <textarea name="description"></textarea>
     <label>Price:</label>
@@ -44,4 +94,87 @@
     <button type="submit">Add Item</button>
   </form>
 </div>
+
+<script>
+function toggleReviews(reviewsId) {
+  var reviewsDiv = document.getElementById(reviewsId);
+  if (reviewsDiv.style.display === 'none') {
+    reviewsDiv.style.display = 'block';
+  } else {
+    reviewsDiv.style.display = 'none';
+  }
+}
+
+function togglePhotos(photosId) {
+  var photosDiv = document.getElementById(photosId);
+  if (photosDiv.style.display === 'none') {
+    photosDiv.style.display = 'block';
+  } else {
+    photosDiv.style.display = 'none';
+  }
+}
+
+function openImageModal(imageSrc) {
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999; cursor: pointer;';
+  modal.onclick = function() { document.body.removeChild(modal); };
+  
+  var img = document.createElement('img');
+  img.src = imageSrc;
+  img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 8px;';
+  
+  modal.appendChild(img);
+  document.body.appendChild(modal);
+}
+
+function likeReview(event, reviewId, currentlyLiked) {
+  event.preventDefault();
+  
+  const icon = document.getElementById(`like-icon-${reviewId}`);
+  const count = document.getElementById(`like-count-${reviewId}`);
+  
+  // Optimistic update
+  if (currentlyLiked) {
+    icon.setAttribute('fill', 'none');
+    icon.setAttribute('stroke', 'rgba(91, 89, 65, 0.6)');
+  } else {
+    icon.setAttribute('fill', '#FB8B24');
+    icon.setAttribute('stroke', '#FB8B24');
+  }
+  
+  fetch(`/reviews/${reviewId}/like/`, {
+    method: 'GET',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    // Update with server response
+    if (data.liked) {
+      icon.setAttribute('fill', '#FB8B24');
+      icon.setAttribute('stroke', '#FB8B24');
+    } else {
+      icon.setAttribute('fill', 'none');
+      icon.setAttribute('stroke', 'rgba(91, 89, 65, 0.6)');
+    }
+    count.textContent = data.like_count;
+    
+    // Update the onclick handler for next click
+    const btn = document.getElementById(`like-btn-${reviewId}`);
+    btn.setAttribute('onclick', `likeReview(event, ${reviewId}, ${data.liked})`);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    // Revert on error
+    if (currentlyLiked) {
+      icon.setAttribute('fill', '#FB8B24');
+      icon.setAttribute('stroke', '#FB8B24');
+    } else {
+      icon.setAttribute('fill', 'none');
+      icon.setAttribute('stroke', 'rgba(91, 89, 65, 0.6)');
+    }
+  });
+}
+</script>
 {% endblock %}
