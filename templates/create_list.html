@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <a href="{% url 'my_lists' %}"><button class="secondary-btn" style="margin-bottom: 20px;">← Back to My Lists</button></a>
+  
+  <div class="card" style="max-width: 800px; margin: 0 auto; padding: 30px;">
+    <h2 style="margin-bottom: 10px; color: #5B5941;">Create a New List</h2>
+    <p style="color: rgba(91, 89, 65, 0.7); margin-bottom: 25px;">Organize your favorite restaurants or dishes into custom lists</p>
+    
+    <form method="POST" id="createListForm">
+      {% csrf_token %}
+      
+      <div style="margin-bottom: 20px;">
+        <label for="{{ form.list_type.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: 600; color: #5B5941;">{{ form.list_type.label }}</label>
+        <div style="display: flex; gap: 15px;">
+          {% for value, label in form.list_type.field.choices %}
+            <label style="flex: 1; cursor: pointer;">
+              <input type="radio" name="{{ form.list_type.html_name }}" value="{{ value }}" {% if forloop.first %}checked{% endif %} style="display: none;" onchange="updateListType(this.value)">
+              <div class="list-type-option" style="padding: 15px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px; text-align: center; transition: all 0.3s;">
+                <div style="margin-bottom: 8px;">
+                  {% if value == 'restaurant' %}
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#5B5941" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                  {% else %}
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#5B5941" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                      <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                      <line x1="6" y1="1" x2="6" y2="4"></line>
+                      <line x1="10" y1="1" x2="10" y2="4"></line>
+                      <line x1="14" y1="1" x2="14" y2="4"></line>
+                    </svg>
+                  {% endif %}
+                </div>
+                <div style="font-weight: 600; color: #5B5941;">{{ label }}</div>
+              </div>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label for="{{ form.title.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: 600; color: #5B5941;">{{ form.title.label }}</label>
+        {{ form.title }}
+      </div>
+      
+      <div style="margin-bottom: 25px;">
+        <label for="{{ form.description.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: 600; color: #5B5941;">{{ form.description.label }} <span style="font-weight: 400; color: rgba(91, 89, 65, 0.6);">(Optional)</span></label>
+        {{ form.description }}
+      </div>
+      
+      <!-- Add Items Section -->
+      <div style="margin-bottom: 25px; padding: 20px; background-color: rgba(91, 89, 65, 0.03); border-radius: 8px; border: 1px solid rgba(91, 89, 65, 0.1);">
+        <label style="display: block; margin-bottom: 12px; font-weight: 600; color: #5B5941;">
+          <span id="addItemsLabel">Add Restaurants</span> <span style="font-weight: 400; color: rgba(91, 89, 65, 0.6);">(Optional)</span>
+        </label>
+        
+        <!-- For restaurant lists: simple search -->
+        <div id="restaurantSearchSection" style="display: block;">
+          <div style="position: relative; margin-bottom: 15px;">
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Search for restaurants..." 
+              style="width: 100%; padding: 12px; padding-right: 40px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px;"
+              autocomplete="off"
+            >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            
+            <div id="searchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid rgba(91, 89, 65, 0.2); border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow-y: auto; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+          </div>
+        </div>
+        
+        <!-- For dish lists: two-step search (restaurant then dishes) -->
+        <div id="dishSearchSection" style="display: none;">
+          <!-- Step 1: Select Restaurant -->
+          <div id="restaurantSelectionStep">
+            <p style="margin-bottom: 10px; color: rgba(91, 89, 65, 0.7); font-size: 0.9em;">First, select a restaurant:</p>
+            <div style="position: relative; margin-bottom: 15px;">
+              <input 
+                type="text" 
+                id="restaurantSearchInput" 
+                placeholder="Search for a restaurant..." 
+                style="width: 100%; padding: 12px; padding-right: 40px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px;"
+                autocomplete="off"
+              >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              
+              <div id="restaurantSearchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid rgba(91, 89, 65, 0.2); border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow-y: auto; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+            </div>
+            
+            <!-- Selected Restaurant Display -->
+            <div id="selectedRestaurantDisplay" style="display: none; padding: 12px; background: white; border: 2px solid #FB8B24; border-radius: 8px; margin-bottom: 15px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: 600; color: #5B5941;" id="selectedRestaurantName"></div>
+                  <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6);" id="selectedRestaurantDetails"></div>
+                </div>
+                <button type="button" onclick="clearRestaurantSelection()" style="background: none; border: none; color: rgba(91, 89, 65, 0.5); cursor: pointer; font-size: 1.3em; padding: 0 8px;">&times;</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Step 2: Search Dishes from Selected Restaurant -->
+          <div id="dishSelectionStep" style="display: none;">
+            <p style="margin-bottom: 10px; color: rgba(91, 89, 65, 0.7); font-size: 0.9em;">Now, search for dishes from this restaurant:</p>
+            <div style="position: relative; margin-bottom: 15px;">
+              <input 
+                type="text" 
+                id="dishSearchInput" 
+                placeholder="Search for dishes..." 
+                style="width: 100%; padding: 12px; padding-right: 40px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px;"
+                autocomplete="off"
+              >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              
+              <div id="dishSearchResults" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid rgba(91, 89, 65, 0.2); border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow-y: auto; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+            </div>
+            
+            <button type="button" onclick="addFromAnotherRestaurant()" style="width: 100%; padding: 10px; background-color: rgba(91, 89, 65, 0.1); color: #5B5941; border: 2px dashed rgba(91, 89, 65, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 10px;">+ Add Dishes from Another Restaurant</button>
+          </div>
+        </div>
+        
+        <div id="selectedItems" style="display: flex; flex-direction: column; gap: 10px;"></div>
+      </div>
+      
+      <button type="submit" style="width: 100%; padding: 14px; font-size: 1.05em; background-color: #FB8B24;">Create List</button>
+    </form>
+  </div>
+</div>
+
+<style>
+  input[type="radio"]:checked + .list-type-option {
+    background-color: rgba(251, 139, 36, 0.1);
+    border-color: #FB8B24;
+  }
+  
+  .list-type-option:hover {
+    background-color: rgba(251, 139, 36, 0.05);
+    border-color: #FB8B24;
+  }
+</style>
+
+<script>
+let currentListType = 'restaurant';
+let selectedItems = [];
+let searchTimeout = null;
+let selectedRestaurantId = null;
+
+function updateListType(listType) {
+  currentListType = listType;
+  selectedItems = [];
+  selectedRestaurantId = null;
+  document.getElementById('selectedItems').innerHTML = '';
+  document.getElementById('searchResults').style.display = 'none';
+  
+  const titleInput = document.getElementById('{{ form.title.id_for_label }}');
+  if (listType === 'restaurant') {
+    document.getElementById('addItemsLabel').textContent = 'Add Restaurants';
+    document.getElementById('restaurantSearchSection').style.display = 'block';
+    document.getElementById('dishSearchSection').style.display = 'none';
+    document.getElementById('searchInput').value = '';
+    titleInput.placeholder = 'e.g., Best Pizza Places or Hidden Gems in NYC';
+  } else {
+    document.getElementById('addItemsLabel').textContent = 'Add Dishes';
+    document.getElementById('restaurantSearchSection').style.display = 'none';
+    document.getElementById('dishSearchSection').style.display = 'block';
+    document.getElementById('restaurantSearchInput').value = '';
+    document.getElementById('dishSearchInput').value = '';
+    document.getElementById('selectedRestaurantDisplay').style.display = 'none';
+    document.getElementById('dishSelectionStep').style.display = 'none';
+    document.getElementById('restaurantSearchResults').style.display = 'none';
+    document.getElementById('dishSearchResults').style.display = 'none';
+    titleInput.placeholder = 'e.g., Must-Try Pasta Dishes or Best Burgers';
+  }
+}
+
+// Initialize
+updateListType('restaurant');
+
+// Restaurant search for restaurant lists
+document.getElementById('searchInput').addEventListener('input', function(e) {
+  const query = e.target.value.trim();
+  
+  clearTimeout(searchTimeout);
+  
+  if (query.length < 2) {
+    document.getElementById('searchResults').style.display = 'none';
+    return;
+  }
+  
+  searchTimeout = setTimeout(() => {
+    fetch(`{% url "search_restaurants_for_list" %}?q=${encodeURIComponent(query)}`)
+      .then(response => response.json())
+      .then(data => {
+        displaySearchResults(data.results);
+      });
+  }, 300);
+});
+
+// Restaurant search for dish lists (step 1)
+document.getElementById('restaurantSearchInput').addEventListener('input', function(e) {
+  const query = e.target.value.trim();
+  
+  clearTimeout(searchTimeout);
+  
+  if (query.length < 2) {
+    document.getElementById('restaurantSearchResults').style.display = 'none';
+    return;
+  }
+  
+  searchTimeout = setTimeout(() => {
+    fetch(`{% url "search_restaurants_for_list" %}?q=${encodeURIComponent(query)}`)
+      .then(response => response.json())
+      .then(data => {
+        displayRestaurantSearchResults(data.results);
+      });
+  }, 300);
+});
+
+// Dish search for selected restaurant (step 2)
+document.getElementById('dishSearchInput').addEventListener('input', function(e) {
+  const query = e.target.value.trim();
+  
+  clearTimeout(searchTimeout);
+  
+  if (query.length < 2) {
+    document.getElementById('dishSearchResults').style.display = 'none';
+    return;
+  }
+  
+  if (!selectedRestaurantId) {
+    return;
+  }
+  
+  searchTimeout = setTimeout(() => {
+    fetch(`{% url "search_dishes_for_list" %}?q=${encodeURIComponent(query)}&restaurant_id=${selectedRestaurantId}`)
+      .then(response => response.json())
+      .then(data => {
+        displayDishSearchResults(data.results);
+      });
+  }, 300);
+});
+
+function displaySearchResults(results) {
+  const container = document.getElementById('searchResults');
+  
+  if (results.length === 0) {
+    container.innerHTML = '<div style="padding: 15px; text-align: center; color: rgba(91, 89, 65, 0.6);">No results found</div>';
+    container.style.display = 'block';
+    return;
+  }
+  
+  container.innerHTML = results.map(item => {
+    const isSelected = selectedItems.some(selected => selected.id === item.id);
+    
+    return `
+      <div onclick="addItem(${item.id}, '${item.name.replace(/'/g, "\\'")}', '${item.cuisine_type} • ${item.location}')" style="padding: 12px 15px; border-bottom: 1px solid rgba(91, 89, 65, 0.1); cursor: pointer; ${isSelected ? 'background-color: rgba(251, 139, 36, 0.1);' : ''}" onmouseover="if(!${isSelected}) this.style.backgroundColor='rgba(91, 89, 65, 0.05)'" onmouseout="if(!${isSelected}) this.style.backgroundColor=''">
+        <div style="font-weight: 600; color: #5B5941;">${item.name}</div>
+        <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6);">${item.cuisine_type} • ${item.location}</div>
+        ${isSelected ? '<div style="font-size: 0.8em; color: #FB8B24; margin-top: 4px;">✓ Added</div>' : ''}
+      </div>
+    `;
+  }).join('');
+  
+  container.style.display = 'block';
+}
+
+function displayRestaurantSearchResults(results) {
+  const container = document.getElementById('restaurantSearchResults');
+  
+  if (results.length === 0) {
+    container.innerHTML = '<div style="padding: 15px; text-align: center; color: rgba(91, 89, 65, 0.6);">No results found</div>';
+    container.style.display = 'block';
+    return;
+  }
+  
+  container.innerHTML = results.map(item => {
+    return `
+      <div onclick="selectRestaurant(${item.id}, '${item.name.replace(/'/g, "\\'")}', '${item.cuisine_type} • ${item.location}')" style="padding: 12px 15px; border-bottom: 1px solid rgba(91, 89, 65, 0.1); cursor: pointer;" onmouseover="this.style.backgroundColor='rgba(91, 89, 65, 0.05)'" onmouseout="this.style.backgroundColor=''">
+        <div style="font-weight: 600; color: #5B5941;">${item.name}</div>
+        <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6);">${item.cuisine_type} • ${item.location}</div>
+      </div>
+    `;
+  }).join('');
+  
+  container.style.display = 'block';
+}
+
+function displayDishSearchResults(results) {
+  const container = document.getElementById('dishSearchResults');
+  
+  if (results.length === 0) {
+    container.innerHTML = '<div style="padding: 15px; text-align: center; color: rgba(91, 89, 65, 0.6);">No dishes found</div>';
+    container.style.display = 'block';
+    return;
+  }
+  
+  container.innerHTML = results.map(item => {
+    const isSelected = selectedItems.some(selected => selected.id === item.id);
+    
+    return `
+      <div onclick="addItem(${item.id}, '${item.name.replace(/'/g, "\\'")}', '${item.restaurant.replace(/'/g, "\\'")} • $${item.price}')" style="padding: 12px 15px; border-bottom: 1px solid rgba(91, 89, 65, 0.1); cursor: pointer; ${isSelected ? 'background-color: rgba(251, 139, 36, 0.1);' : ''}" onmouseover="if(!${isSelected}) this.style.backgroundColor='rgba(91, 89, 65, 0.05)'" onmouseout="if(!${isSelected}) this.style.backgroundColor=''">
+        <div style="font-weight: 600; color: #5B5941;">${item.name}</div>
+        <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6);">${item.restaurant} • $${item.price}</div>
+        ${isSelected ? '<div style="font-size: 0.8em; color: #FB8B24; margin-top: 4px;">✓ Added</div>' : ''}
+      </div>
+    `;
+  }).join('');
+  
+  container.style.display = 'block';
+}
+
+function selectRestaurant(id, name, details) {
+  selectedRestaurantId = id;
+  document.getElementById('selectedRestaurantName').textContent = name;
+  document.getElementById('selectedRestaurantDetails').textContent = details;
+  document.getElementById('selectedRestaurantDisplay').style.display = 'block';
+  document.getElementById('dishSelectionStep').style.display = 'block';
+  document.getElementById('restaurantSearchResults').style.display = 'none';
+  document.getElementById('restaurantSearchInput').value = '';
+  document.getElementById('dishSearchInput').focus();
+}
+
+function clearRestaurantSelection() {
+  selectedRestaurantId = null;
+  document.getElementById('selectedRestaurantDisplay').style.display = 'none';
+  document.getElementById('dishSelectionStep').style.display = 'none';
+  document.getElementById('restaurantSearchInput').value = '';
+  document.getElementById('dishSearchInput').value = '';
+  document.getElementById('dishSearchResults').style.display = 'none';
+  // Don't clear selectedItems - keep dishes from other restaurants
+}
+
+function addFromAnotherRestaurant() {
+  selectedRestaurantId = null;
+  document.getElementById('selectedRestaurantDisplay').style.display = 'none';
+  document.getElementById('dishSelectionStep').style.display = 'none';
+  document.getElementById('restaurantSearchInput').value = '';
+  document.getElementById('dishSearchInput').value = '';
+  document.getElementById('dishSearchResults').style.display = 'none';
+  document.getElementById('restaurantSearchInput').focus();
+}
+
+function addItem(id, name, details) {
+  if (selectedItems.some(item => item.id === id)) {
+    return;
+  }
+  
+  selectedItems.push({ id, name, details });
+  renderSelectedItems();
+  
+  // Refresh search results to show "Added" status
+  if (currentListType === 'restaurant') {
+    const query = document.getElementById('searchInput').value;
+    if (query) {
+      fetch(`{% url "search_restaurants_for_list" %}?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+          displaySearchResults(data.results);
+        });
+    }
+  } else {
+    const query = document.getElementById('dishSearchInput').value;
+    if (query && selectedRestaurantId) {
+      fetch(`{% url "search_dishes_for_list" %}?q=${encodeURIComponent(query)}&restaurant_id=${selectedRestaurantId}`)
+        .then(response => response.json())
+        .then(data => {
+          displayDishSearchResults(data.results);
+        });
+    }
+  }
+}
+
+function removeItem(id) {
+  selectedItems = selectedItems.filter(item => item.id !== id);
+  renderSelectedItems();
+  
+  // Refresh search results
+  if (currentListType === 'restaurant') {
+    const query = document.getElementById('searchInput').value;
+    if (query) {
+      fetch(`{% url "search_restaurants_for_list" %}?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+          displaySearchResults(data.results);
+        });
+    }
+  } else {
+    const query = document.getElementById('dishSearchInput').value;
+    if (query && selectedRestaurantId) {
+      fetch(`{% url "search_dishes_for_list" %}?q=${encodeURIComponent(query)}&restaurant_id=${selectedRestaurantId}`)
+        .then(response => response.json())
+        .then(data => {
+          displayDishSearchResults(data.results);
+        });
+    }
+  }
+}
+
+function renderSelectedItems() {
+  const container = document.getElementById('selectedItems');
+  
+  if (selectedItems.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  container.innerHTML = selectedItems.map(item => `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border: 1px solid rgba(91, 89, 65, 0.2); border-radius: 8px;">
+      <div>
+        <div style="font-weight: 600; color: #5B5941;">${item.name}</div>
+        <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.6);">${item.details}</div>
+      </div>
+      <button type="button" onclick="removeItem(${item.id})" style="background: none; border: none; color: rgba(91, 89, 65, 0.5); cursor: pointer; font-size: 1.3em; padding: 0 8px;">&times;</button>
+    </div>
+  `).join('');
+}
+
+// Add hidden inputs before form submission
+document.getElementById('createListForm').addEventListener('submit', function(e) {
+  const existingInputs = document.querySelectorAll('input[name="items"]');
+  existingInputs.forEach(input => input.remove());
+  
+  selectedItems.forEach(item => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'items';
+    input.value = item.id;
+    this.appendChild(input);
+  });
+});
+
+// Close search results when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#searchInput') && !e.target.closest('#searchResults')) {
+    document.getElementById('searchResults').style.display = 'none';
+  }
+  if (!e.target.closest('#restaurantSearchInput') && !e.target.closest('#restaurantSearchResults')) {
+    document.getElementById('restaurantSearchResults').style.display = 'none';
+  }
+  if (!e.target.closest('#dishSearchInput') && !e.target.closest('#dishSearchResults')) {
+    document.getElementById('dishSearchResults').style.display = 'none';
+  }
+});
+</script>
+{% endblock %}

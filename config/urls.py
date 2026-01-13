@@ -39,12 +39,22 @@ urlpatterns = [
     path('restaurants/<int:restaurant_id>/menu/', restaurant_views.view_menu, name='view_menu'),
     path('menu-items/<int:menu_item_id>/review/', restaurant_views.add_review, name='add_review'),
     path('reviews/<int:review_id>/like/', restaurant_views.like_review, name='like_review'),
+    path('reviews/<int:review_id>/comment/', restaurant_views.add_comment, name='add_comment'),
     path('create-diary-entry/', post_views.create_diary_entry, name='create_diary_entry'),
     path('profile/', restaurant_views.user_profile, name='user_profile'),
     path('profile/edit/', restaurant_views.edit_profile, name='edit_profile'),
     path('user/<str:username>/', restaurant_views.view_user_profile, name='view_user_profile'),
     path('user/<str:username>/follow/', restaurant_views.follow_user, name='follow_user'),
     path('user/<str:username>/unfollow/', restaurant_views.unfollow_user, name='unfollow_user'),
+    path('lists/create/', restaurant_views.create_list, name='create_list'),
+    path('lists/my/', restaurant_views.my_lists, name='my_lists'),
+    path('lists/<int:list_id>/', restaurant_views.view_list, name='view_list'),
+    path('lists/<int:list_id>/delete/', restaurant_views.delete_list, name='delete_list'),
+    path('lists/<int:list_id>/remove/<int:item_id>/', restaurant_views.remove_from_list, name='remove_from_list'),
+    path('lists/add/', restaurant_views.add_to_list, name='add_to_list'),
+    path('api/get-user-lists/', restaurant_views.get_user_lists, name='get_user_lists'),
+    path('api/search-restaurants/', restaurant_views.search_restaurants_for_list, name='search_restaurants_for_list'),
+    path('api/search-dishes/', restaurant_views.search_dishes_for_list, name='search_dishes_for_list'),
 ]
 
 if settings.DEBUG:

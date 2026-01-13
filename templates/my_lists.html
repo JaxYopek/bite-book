@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div>
+      <h2 style="margin: 0 0 5px 0; color: #5B5941;">My Lists</h2>
+      <p style="color: rgba(91, 89, 65, 0.6); margin: 0; font-size: 0.95em;">Curate and organize your favorite restaurants and dishes</p>
+    </div>
+    <a href="{% url 'create_list' %}" style="text-decoration: none;">
+      <button style="background-color: #FB8B24; padding: 14px 28px; display: flex; align-items: center; gap: 8px; font-weight: 600;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Create New List
+      </button>
+    </a>
+  </div>
+  
+  {% if lists %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+      {% for list in lists %}
+        <a href="{% url 'view_list' list.id %}" style="text-decoration: none;">
+          <div class="card" style="padding: 24px; transition: all 0.3s; cursor: pointer; border: 2px solid transparent;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)'; this.style.borderColor='rgba(251, 139, 36, 0.3)'" onmouseout="this.style.transform=''; this.style.boxShadow=''; this.style.borderColor='transparent'">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+              <div style="flex: 1; min-width: 0; padding-right: 12px;">
+                <h3 style="margin: 0 0 8px 0; color: #5B5941; font-size: 1.25em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ list.title }}</h3>
+              </div>
+              <div style="flex-shrink: 0;">
+                {% if list.list_type == 'restaurant' %}
+                  <div style="padding: 8px; background-color: rgba(91, 89, 65, 0.06); border-radius: 8px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                  </div>
+                {% else %}
+                  <div style="padding: 8px; background-color: rgba(91, 89, 65, 0.06); border-radius: 8px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                      <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                      <line x1="6" y1="1" x2="6" y2="4"></line>
+                      <line x1="10" y1="1" x2="10" y2="4"></line>
+                      <line x1="14" y1="1" x2="14" y2="4"></line>
+                    </svg>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            
+            {% if list.description %}
+              <p style="color: rgba(91, 89, 65, 0.7); margin: 0 0 18px 0; font-size: 0.95em; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ list.description }}</p>
+            {% else %}
+              <p style="color: rgba(91, 89, 65, 0.4); margin: 0 0 18px 0; font-size: 0.9em; font-style: italic;">No description</p>
+            {% endif %}
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 15px; border-top: 1px solid rgba(91, 89, 65, 0.1);">
+              <div style="display: flex; align-items: center; gap: 6px; color: #FB8B24; font-size: 0.95em; font-weight: 600;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                {{ list.item_count }} item{{ list.item_count|pluralize }}
+              </div>
+              <div style="color: rgba(91, 89, 65, 0.5); font-size: 0.85em;">{{ list.created_at|date:"M d" }}</div>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card" style="padding: 60px 40px; text-align: center;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 20px;">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+      <h3 style="color: #5B5941; margin-bottom: 10px;">No lists yet</h3>
+      <p style="color: rgba(91, 89, 65, 0.7); margin-bottom: 25px;">Create your first list to organize restaurants or menu items</p>
+      <a href="{% url 'create_list' %}" style="text-decoration: none;">
+        <button style="background-color: #FB8B24; padding: 12px 24px;">Create Your First List</button>
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

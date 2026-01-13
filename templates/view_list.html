@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <a href="{% url 'my_lists' %}"><button class="secondary-btn" style="margin-bottom: 20px;">← Back to My Lists</button></a>
+  
+  <div class="card" style="padding: 30px; margin-bottom: 25px;">
+    <div style="display: flex; justify-content: space-between; align-items: start; gap: 20px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 300px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+          <h2 style="margin: 0; color: #5B5941;">{{ custom_list.title }}</h2>
+          <div>
+            {% if custom_list.list_type == 'restaurant' %}
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+            {% else %}
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                <line x1="6" y1="1" x2="6" y2="4"></line>
+                <line x1="10" y1="1" x2="10" y2="4"></line>
+                <line x1="14" y1="1" x2="14" y2="4"></line>
+              </svg>
+            {% endif %}
+          </div>
+        </div>
+        
+        {% if custom_list.description %}
+          <p style="color: rgba(91, 89, 65, 0.7); margin: 0 0 15px 0; line-height: 1.5;">{{ custom_list.description }}</p>
+        {% endif %}
+        
+        <div style="display: flex; align-items: center; gap: 15px; color: rgba(91, 89, 65, 0.6); font-size: 0.9em;">
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <a href="{% url 'view_user_profile' custom_list.user.username %}" style="color: #FB8B24; font-weight: 500;">{{ custom_list.user.username }}</a>
+          </div>
+          <div>{{ items_with_ratings|length }} item{{ items_with_ratings|pluralize }}</div>
+          <div>{{ custom_list.created_at|date:"M d, Y" }}</div>
+        </div>
+      </div>
+      
+      {% if is_owner %}
+        <div style="display: flex; gap: 10px;">
+          <a href="{% url 'delete_list' custom_list.id %}" onclick="return confirm('Are you sure you want to delete this list?')" style="text-decoration: none;">
+            <button class="secondary-btn" style="padding: 10px 20px; color: #d32f2f;">Delete List</button>
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  {% if items_with_ratings %}
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+      {% for item_data in items_with_ratings %}
+        <div class="card" style="padding: 20px;">
+          {% if item_data.item.menu_item %}
+            <div style="display: flex; justify-content: space-between; align-items: start; gap: 20px;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                  <h3 style="margin: 0; color: #5B5941;">{{ item_data.item.menu_item.name }}</h3>
+                  {% if item_data.rating_stats and item_data.rating_stats.avg %}
+                    <div style="display: flex; align-items: center; gap: 4px; color: #FB8B24; font-weight: 600; font-size: 0.9em;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#FB8B24" stroke="none">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                      </svg>
+                      <span>{{ item_data.rating_stats.avg }}</span>
+                      <span style="color: rgba(91, 89, 65, 0.5); font-weight: 400; font-size: 0.9em;">({{ item_data.rating_stats.count }})</span>
+                    </div>
+                  {% endif %}
+                </div>
+                <a href="{% url 'restaurant_detail' item_data.item.menu_item.menu.restaurant.id %}" style="color: #FB8B24; font-weight: 500; font-size: 0.95em; text-decoration: none;">
+                  {{ item_data.item.menu_item.menu.restaurant.name }}
+                </a>
+                {% if item_data.item.menu_item.description %}
+                  <p style="color: rgba(91, 89, 65, 0.7); margin: 10px 0 0 0; font-size: 0.9em;">{{ item_data.item.menu_item.description }}</p>
+                {% endif %}
+                <div style="margin-top: 10px; font-weight: 600; color: #5B5941;">${{ item_data.item.menu_item.price }}</div>
+              </div>
+              {% if is_owner %}
+                <a href="{% url 'remove_from_list' custom_list.id item_data.item.id %}" style="text-decoration: none;">
+                  <button class="secondary-btn" style="padding: 6px 12px; font-size: 0.85em;">Remove</button>
+                </a>
+              {% endif %}
+            </div>
+          {% elif item_data.item.restaurant %}
+            <div style="display: flex; justify-content: space-between; align-items: start; gap: 20px;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                  <h3 style="margin: 0;">
+                    <a href="{% url 'restaurant_detail' item_data.item.restaurant.id %}" style="color: #5B5941; text-decoration: none;">
+                      {{ item_data.item.restaurant.name }}
+                    </a>
+                  </h3>
+                  {% if item_data.rating_stats and item_data.rating_stats.avg %}
+                    <div style="display: flex; align-items: center; gap: 4px; color: #FB8B24; font-weight: 600; font-size: 0.9em;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#FB8B24" stroke="none">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                      </svg>
+                      <span>{{ item_data.rating_stats.avg }}</span>
+                      <span style="color: rgba(91, 89, 65, 0.5); font-weight: 400; font-size: 0.9em;">({{ item_data.rating_stats.count }})</span>
+                    </div>
+                  {% endif %}
+                </div>
+                <div style="display: inline-block; padding: 4px 10px; background-color: rgba(251, 139, 36, 0.15); color: #FB8B24; border-radius: 12px; font-size: 0.85em; font-weight: 600; margin-bottom: 8px;">
+                  {{ item_data.item.restaurant.cuisine_type }}
+                </div>
+                <p style="color: rgba(91, 89, 65, 0.6); margin: 8px 0 0 0; font-size: 0.9em;">
+                  {{ item_data.item.restaurant.city }}, {{ item_data.item.restaurant.province }}
+                </p>
+              </div>
+              {% if is_owner %}
+                <a href="{% url 'remove_from_list' custom_list.id item_data.item.id %}" style="text-decoration: none;">
+                  <button class="secondary-btn" style="padding: 6px 12px; font-size: 0.85em;">Remove</button>
+                </a>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card" style="padding: 60px 40px; text-align: center;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 20px;">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+      <h3 style="color: #5B5941; margin-bottom: 10px;">This list is empty</h3>
+      <p style="color: rgba(91, 89, 65, 0.7);">
+        {% if custom_list.list_type == 'restaurant' %}
+          Browse restaurants and add them to this list
+        {% else %}
+          Browse dishes and add them to this list
+        {% endif %}
+      </p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

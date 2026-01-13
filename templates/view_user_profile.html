@@ -109,6 +109,56 @@
     <p style="color: rgba(91, 89, 65, 0.6); font-style: italic; margin-bottom: 30px;">No restaurants on the want-to-try list yet.</p>
   {% endif %}
 
+  <!-- Custom Lists -->
+  <h3 style="margin: 30px 0 15px 0; display: flex; align-items: center; gap: 8px;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FB8B24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6"></line>
+      <line x1="8" y1="12" x2="21" y2="12"></line>
+      <line x1="8" y1="18" x2="21" y2="18"></line>
+      <line x1="3" y1="6" x2="3.01" y2="6"></line>
+      <line x1="3" y1="12" x2="3.01" y2="12"></line>
+      <line x1="3" y1="18" x2="3.01" y2="18"></line>
+    </svg>
+    Lists
+  </h3>
+  {% if user_lists %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-bottom: 30px;">
+      {% for list in user_lists %}
+        <a href="{% url 'view_list' list.id %}" style="text-decoration: none;">
+          <div class="card" style="padding: 18px; transition: all 0.3s; cursor: pointer;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 18px rgba(0,0,0,0.12)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
+            <div style="display: flex; align-items: start; gap: 12px;">
+              <div style="flex-shrink: 0; margin-top: 2px;">
+                {% if list.list_type == 'restaurant' %}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                  </svg>
+                {% else %}
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                    <line x1="6" y1="1" x2="6" y2="4"></line>
+                    <line x1="10" y1="1" x2="10" y2="4"></line>
+                    <line x1="14" y1="1" x2="14" y2="4"></line>
+                  </svg>
+                {% endif %}
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <h4 style="margin: 0 0 6px 0; color: #5B5941; font-size: 1.05em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ list.title }}</h4>
+                {% if list.description %}
+                  <p style="color: rgba(91, 89, 65, 0.7); margin: 0 0 8px 0; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ list.description|truncatewords:10 }}</p>
+                {% endif %}
+                <div style="font-size: 0.8em; color: rgba(91, 89, 65, 0.5);">{{ list.items.count }} item{{ list.items.count|pluralize }}</div>
+              </div>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="color: rgba(91, 89, 65, 0.6); font-style: italic; margin-bottom: 30px;">No lists created yet.</p>
+  {% endif %}
+
   <!-- Recent Reviews -->
   <h3 style="margin: 30px 0 15px 0;">Recent Reviews</h3>
   {% if user_reviews %}

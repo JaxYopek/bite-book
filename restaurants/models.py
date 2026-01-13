@@ -176,3 +176,56 @@ class RestaurantList(models.Model):
 
 	def __str__(self):
 		return f"{self.user.username}'s {self.list_type}: {self.restaurant.name}"
+
+
+class Comment(models.Model):
+	review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name='comments')
+	user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+	text = models.TextField()
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['created_at']
+
+	def __str__(self):
+		return f"{self.user.username} on {self.review.menu_item.name}"
+
+
+class CustomList(models.Model):
+	LIST_TYPE_CHOICES = [
+		('dish', 'Dishes'),
+		('restaurant', 'Restaurants'),
+	]
+	user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='custom_lists')
+	title = models.CharField(max_length=200)
+	description = models.TextField(blank=True, null=True)
+	list_type = models.CharField(max_length=20, choices=LIST_TYPE_CHOICES)
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		ordering = ['-created_at']
+
+	def __str__(self):
+		return f"{self.title} by {self.user.username}"
+	
+	def item_count(self):
+		return self.items.count()
+
+
+class CustomListItem(models.Model):
+	custom_list = models.ForeignKey(CustomList, on_delete=models.CASCADE, related_name='items')
+	menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, null=True, blank=True)
+	restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, null=True, blank=True)
+	added_at = models.DateTimeField(auto_now_add=True)
+	note = models.TextField(blank=True, null=True)
+
+	class Meta:
+		ordering = ['added_at']
+
+	def __str__(self):
+		if self.menu_item:
+			return f"{self.menu_item.name} in {self.custom_list.title}"
+		elif self.restaurant:
+			return f"{self.restaurant.name} in {self.custom_list.title}"
+		return f"Item in {self.custom_list.title}"

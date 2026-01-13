@@ -2,10 +2,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from .models import Restaurant, Menu, MenuItem, Review, Profile, Follow, ReviewLike, RestaurantList
+from .models import Restaurant, Menu, MenuItem, Review, Profile, Follow, ReviewLike, RestaurantList, Comment, CustomList, CustomListItem
 from posts.models import Post
 from django import forms
 from django.http import JsonResponse
+from django.db import models
 
 class RestaurantForm(forms.ModelForm):
 	class Meta:
@@ -231,9 +232,20 @@ def view_menu(request, restaurant_id):
 			MenuItem.objects.create(menu=menu, name=name, description=description, price=price)
 		return redirect('view_menu', restaurant_id=restaurant_id)
 	
+	# Get search query
+	search_query = request.GET.get('search', '').strip()
+	
+	# Filter menu items based on search
+	menu_items = menu.items.all()
+	if search_query:
+		menu_items = menu_items.filter(
+			Q(name__icontains=search_query) |
+			Q(description__icontains=search_query)
+		)
+	
 	# Calculate rating stats for each menu item
 	menu_items_with_stats = []
-	for item in menu.items.all():
+	for item in menu_items:
 		has_photos = item.reviews.filter(image__isnull=False).exists()
 		
 		# Add like information for each review
@@ -254,10 +266,17 @@ def view_menu(request, restaurant_id):
 		}
 		menu_items_with_stats.append(item_data)
 	
+	# Check if this is an AJAX request
+	if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+		return render(request, 'menu_items_partial.html', {
+			'menu_items_with_stats': menu_items_with_stats,
+		})
+	
 	return render(request, 'view_menu.html', {
 		'restaurant': restaurant,
 		'menu': menu,
-		'menu_items_with_stats': menu_items_with_stats
+		'menu_items_with_stats': menu_items_with_stats,
+		'search_query': search_query
 	})
 
 
@@ -296,7 +315,13 @@ def add_review(request, menu_item_id):
 
 @login_required
 def feed(request):
-	posts = Post.objects.select_related('user', 'user__profile', 'menu_item').all().order_by('-created_at')[:20]
+	# Get users that the current user is following
+	following_users = Follow.objects.filter(follower=request.user).values_list('following', flat=True)
+	
+	# Filter posts to only show from followed users
+	posts = Post.objects.select_related('user', 'user__profile', 'menu_item').filter(
+		user__in=following_users
+	).order_by('-created_at')[:20]
 	
 	# For each post, get the associated review and like info
 	posts_with_likes = []
@@ -306,7 +331,8 @@ def feed(request):
 			'review': None,
 			'like_count': 0,
 			'user_has_liked': False,
-			'is_top_reviewer': post.user.profile.is_top_reviewer() if hasattr(post.user, 'profile') else False
+			'is_top_reviewer': post.user.profile.is_top_reviewer() if hasattr(post.user, 'profile') else False,
+			'comments': []
 		}
 		
 		# Find the associated review if it's a review post
@@ -321,10 +347,14 @@ def feed(request):
 				post_data['review'] = review
 				post_data['like_count'] = review.likes.count()
 				post_data['user_has_liked'] = review.likes.filter(user=request.user).exists()
+				post_data['comments'] = review.comments.select_related('user', 'user__profile').all()
 		
 		posts_with_likes.append(post_data)
 	
-	return render(request, 'feed.html', {'posts_with_likes': posts_with_likes})
+	return render(request, 'feed.html', {
+		'posts_with_likes': posts_with_likes,
+		'following_count': len(following_users)
+	})
 
 @login_required
 def user_profile(request):
@@ -353,6 +383,9 @@ def user_profile(request):
 	# Get top 3 cuisines
 	flavor_profile = cuisine_counts.most_common(3) if cuisine_counts else []
 	
+	# Get user's custom lists
+	user_lists = CustomList.objects.filter(user=request.user).prefetch_related('items')[:6]
+	
 	return render(request, 'user_profile.html', {
 		'user_posts': user_posts,
 		'user_reviews': user_reviews,
@@ -363,6 +396,7 @@ def user_profile(request):
 		'favorite_restaurants': favorite_restaurants,
 		'want_to_try_restaurants': want_to_try_restaurants,
 		'flavor_profile': flavor_profile,
+		'user_lists': user_lists,
 	})
 
 @login_required
@@ -436,6 +470,9 @@ def view_user_profile(request, username):
 	# Get top 3 cuisines
 	flavor_profile = cuisine_counts.most_common(3) if cuisine_counts else []
 	
+	# Get user's custom lists
+	user_lists = CustomList.objects.filter(user=profile_user).prefetch_related('items')[:6]
+	
 	return render(request, 'view_user_profile.html', {
 		'profile_user': profile_user,
 		'user_posts': user_posts,
@@ -449,6 +486,7 @@ def view_user_profile(request, username):
 		'favorite_restaurants': favorite_restaurants,
 		'want_to_try_restaurants': want_to_try_restaurants,
 		'flavor_profile': flavor_profile,
+		'user_lists': user_lists,
 	})
 
 
@@ -500,3 +538,281 @@ def toggle_restaurant_list(request, restaurant_id, list_type):
 		)
 	
 	return redirect('restaurant_detail', restaurant_id=restaurant_id)
+
+
+@login_required
+def add_comment(request, review_id):
+	if request.method == 'POST':
+		review = get_object_or_404(Review, id=review_id)
+		text = request.POST.get('text', '').strip()
+		
+		if text:
+			comment = Comment.objects.create(
+				review=review,
+				user=request.user,
+				text=text
+			)
+			
+			# Return JSON for AJAX requests
+			if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+				# Get profile info
+				profile = None
+				display_name = request.user.username
+				profile_picture_url = None
+				
+				if hasattr(request.user, 'profile'):
+					profile = request.user.profile
+					if profile.display_name:
+						display_name = profile.display_name
+					if profile.profile_picture:
+						profile_picture_url = profile.profile_picture.url
+				
+				return JsonResponse({
+					'success': True,
+					'comment': {
+						'id': comment.id,
+						'text': comment.text,
+						'username': request.user.username,
+						'display_name': display_name,
+						'profile_picture_url': profile_picture_url,
+						'created_at': 'just now'
+					}
+				})
+	
+	return redirect(request.META.get('HTTP_REFERER', 'feed'))
+
+
+class CustomListForm(forms.ModelForm):
+	class Meta:
+		model = CustomList
+		fields = ['title', 'description', 'list_type']
+		widgets = {
+			'description': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Optional description...'}),
+			'title': forms.TextInput(attrs={'placeholder': 'e.g., Best Pizza Places or Must-Try Pasta Dishes'}),
+			'list_type': forms.RadioSelect(),
+		}
+		labels = {
+			'list_type': 'List Type',
+		}
+	
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		# Override choices to only include the actual choices, not the blank option
+		self.fields['list_type'].choices = CustomList.LIST_TYPE_CHOICES
+
+
+@login_required
+def create_list(request):
+	if request.method == 'POST':
+		form = CustomListForm(request.POST)
+		if form.is_valid():
+			custom_list = form.save(commit=False)
+			custom_list.user = request.user
+			custom_list.save()
+			
+			# Add initial items if provided
+			item_ids = request.POST.getlist('items')
+			for item_id in item_ids:
+				if custom_list.list_type == 'restaurant':
+					restaurant = Restaurant.objects.filter(id=item_id).first()
+					if restaurant:
+						CustomListItem.objects.create(custom_list=custom_list, restaurant=restaurant)
+				elif custom_list.list_type == 'dish':
+					menu_item = MenuItem.objects.filter(id=item_id).first()
+					if menu_item:
+						CustomListItem.objects.create(custom_list=custom_list, menu_item=menu_item)
+			
+			# Create a post about the list
+			list_type_display = 'Restaurants' if custom_list.list_type == 'restaurant' else 'Dishes'
+			title = f"{request.user.username} created \"{custom_list.title}\" - check it out!"
+			Post.objects.create(
+				post_type='list',
+				title=title,
+				user=request.user,
+				custom_list=custom_list
+			)
+			
+			return redirect('view_list', list_id=custom_list.id)
+	else:
+		form = CustomListForm()
+	return render(request, 'create_list.html', {'form': form})
+
+
+@login_required
+def view_list(request, list_id):
+	custom_list = get_object_or_404(CustomList, id=list_id)
+	items = custom_list.items.select_related('menu_item__menu__restaurant', 'restaurant').all()
+	is_owner = custom_list.user == request.user
+	
+	# Calculate ratings for each item
+	items_with_ratings = []
+	for item in items:
+		item_data = {
+			'item': item,
+			'rating_stats': None
+		}
+		
+		if item.menu_item:
+			# Get rating stats for menu item
+			base_stats = item.menu_item.get_rating_stats()
+			if base_stats:
+				review_count = item.menu_item.reviews.count()
+				item_data['rating_stats'] = {
+					'avg': base_stats['avg'],
+					'min': base_stats['min'],
+					'max': base_stats['max'],
+					'count': review_count
+				}
+		elif item.restaurant:
+			# Calculate rating stats for restaurant
+			from django.db.models import Avg
+			if hasattr(item.restaurant, 'menu'):
+				menu_items = item.restaurant.menu.items.all()
+				reviews = Review.objects.filter(menu_item__in=menu_items)
+				review_count = reviews.count()
+				if review_count > 0:
+					avg_rating = reviews.aggregate(Avg('rating'))['rating__avg']
+					item_data['rating_stats'] = {
+						'avg': round(avg_rating, 1) if avg_rating else None,
+						'count': review_count
+					}
+		
+		items_with_ratings.append(item_data)
+	
+	return render(request, 'view_list.html', {
+		'custom_list': custom_list,
+		'items_with_ratings': items_with_ratings,
+		'is_owner': is_owner
+	})
+
+
+@login_required
+def my_lists(request):
+	lists = CustomList.objects.filter(user=request.user).prefetch_related('items')
+	return render(request, 'my_lists.html', {'lists': lists})
+
+
+@login_required
+def add_to_list(request):
+	if request.method == 'POST':
+		list_id = request.POST.get('list_id')
+		item_type = request.POST.get('item_type')
+		item_id = request.POST.get('item_id')
+		
+		custom_list = get_object_or_404(CustomList, id=list_id, user=request.user)
+		
+		# Check if item type matches list type
+		if (item_type == 'menu_item' and custom_list.list_type != 'dish') or \
+		   (item_type == 'restaurant' and custom_list.list_type != 'restaurant'):
+			return JsonResponse({'success': False, 'error': 'Item type does not match list type'})
+		
+		# Create list item
+		if item_type == 'menu_item':
+			menu_item = get_object_or_404(MenuItem, id=item_id)
+			# Check if already in list
+			if CustomListItem.objects.filter(custom_list=custom_list, menu_item=menu_item).exists():
+				return JsonResponse({'success': False, 'error': 'Item already in list'})
+			CustomListItem.objects.create(custom_list=custom_list, menu_item=menu_item)
+		elif item_type == 'restaurant':
+			restaurant = get_object_or_404(Restaurant, id=item_id)
+			# Check if already in list
+			if CustomListItem.objects.filter(custom_list=custom_list, restaurant=restaurant).exists():
+				return JsonResponse({'success': False, 'error': 'Restaurant already in list'})
+			CustomListItem.objects.create(custom_list=custom_list, restaurant=restaurant)
+		
+		return JsonResponse({'success': True})
+	
+	return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+
+@login_required
+def remove_from_list(request, list_id, item_id):
+	custom_list = get_object_or_404(CustomList, id=list_id, user=request.user)
+	list_item = get_object_or_404(CustomListItem, id=item_id, custom_list=custom_list)
+	list_item.delete()
+	return redirect('view_list', list_id=list_id)
+
+
+@login_required
+def delete_list(request, list_id):
+	custom_list = get_object_or_404(CustomList, id=list_id, user=request.user)
+	custom_list.delete()
+	return redirect('my_lists')
+
+
+@login_required
+def get_user_lists(request):
+	list_type = request.GET.get('type')
+	
+	# Map item types to list types
+	if list_type == 'restaurant':
+		filter_type = 'restaurant'
+	elif list_type == 'menu_item':
+		filter_type = 'dish'
+	else:
+		return JsonResponse({'lists': []})
+	
+	lists = CustomList.objects.filter(user=request.user, list_type=filter_type).annotate(
+		item_count=models.Count('items')
+	).values('id', 'title', 'item_count')
+	
+	return JsonResponse({'lists': list(lists)})
+
+
+@login_required
+def search_restaurants_for_list(request):
+	query = request.GET.get('q', '').strip()
+	if not query or len(query) < 2:
+		return JsonResponse({'results': []})
+	
+	restaurants = Restaurant.objects.filter(
+		models.Q(name__icontains=query) |
+		models.Q(city__icontains=query) |
+		models.Q(cuisine_type__icontains=query)
+	)[:10]
+	
+	results = [{
+		'id': r.id,
+		'name': r.name,
+		'cuisine_type': r.cuisine_type,
+		'location': f"{r.city}, {r.province}"
+	} for r in restaurants]
+	
+	return JsonResponse({'results': results})
+
+
+@login_required
+def search_dishes_for_list(request):
+	query = request.GET.get('q', '').strip()
+	restaurant_id = request.GET.get('restaurant_id', '').strip()
+	
+	if not query or len(query) < 2:
+		return JsonResponse({'results': []})
+	
+	# If restaurant_id is provided, only search within that restaurant
+	if restaurant_id:
+		try:
+			menu_items = MenuItem.objects.select_related('menu__restaurant').filter(
+				menu__restaurant_id=restaurant_id
+			).filter(
+				models.Q(name__icontains=query) |
+				models.Q(description__icontains=query)
+			)[:10]
+		except ValueError:
+			return JsonResponse({'results': []})
+	else:
+		# Search all dishes
+		menu_items = MenuItem.objects.select_related('menu__restaurant').filter(
+			models.Q(name__icontains=query) |
+			models.Q(description__icontains=query) |
+			models.Q(menu__restaurant__name__icontains=query)
+		)[:10]
+	
+	results = [{
+		'id': item.id,
+		'name': item.name,
+		'restaurant': item.menu.restaurant.name,
+		'price': str(item.price)
+	} for item in menu_items]
+	
+	return JsonResponse({'results': results})
