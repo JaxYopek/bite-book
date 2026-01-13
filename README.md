@@ -48,7 +48,7 @@ A Django-based web application for restaurant and menu item reviews, inspired by
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone [<repository-url>](https://github.com/JaxYopek/bite-book.git)
    cd bite-book
    ```
 
