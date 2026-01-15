@@ -40,7 +40,13 @@ urlpatterns = [
     path('menu-items/<int:menu_item_id>/review/', restaurant_views.add_review, name='add_review'),
     path('reviews/<int:review_id>/like/', restaurant_views.like_review, name='like_review'),
     path('reviews/<int:review_id>/comment/', restaurant_views.add_comment, name='add_comment'),
+    path('comments/<int:comment_id>/delete/', restaurant_views.delete_comment, name='delete_comment'),
     path('create-diary-entry/', post_views.create_diary_entry, name='create_diary_entry'),
+    path('posts/<int:post_id>/', post_views.post_detail, name='post_detail'),
+    path('posts/<int:post_id>/like/', post_views.like_post, name='like_post'),
+    path('posts/<int:post_id>/comment/', post_views.add_post_comment, name='add_post_comment'),
+    path('posts/<int:post_id>/delete/', post_views.delete_post, name='delete_post'),
+    path('post-comments/<int:comment_id>/delete/', post_views.delete_post_comment, name='delete_post_comment'),
     path('profile/', restaurant_views.user_profile, name='user_profile'),
     path('profile/edit/', restaurant_views.edit_profile, name='edit_profile'),
     path('user/<str:username>/', restaurant_views.view_user_profile, name='view_user_profile'),
@@ -55,6 +61,9 @@ urlpatterns = [
     path('api/get-user-lists/', restaurant_views.get_user_lists, name='get_user_lists'),
     path('api/search-restaurants/', restaurant_views.search_restaurants_for_list, name='search_restaurants_for_list'),
     path('api/search-dishes/', restaurant_views.search_dishes_for_list, name='search_dishes_for_list'),
+    path('notifications/', restaurant_views.notifications, name='notifications'),
+    path('notifications/<int:notification_id>/read/', restaurant_views.mark_notification_read, name='mark_notification_read'),
+    path('api/notifications/unread-count/', restaurant_views.get_unread_notification_count, name='get_unread_notification_count'),
 ]
 
 if settings.DEBUG:

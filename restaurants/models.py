@@ -99,6 +99,30 @@ class Restaurant(models.Model):
 		return f"{self.name} ({self.city})"
 
 
+class HappyHour(models.Model):
+	DAYS_OF_WEEK = [
+		('monday', 'Monday'),
+		('tuesday', 'Tuesday'),
+		('wednesday', 'Wednesday'),
+		('thursday', 'Thursday'),
+		('friday', 'Friday'),
+		('saturday', 'Saturday'),
+		('sunday', 'Sunday'),
+	]
+	restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='happy_hours')
+	day_of_week = models.CharField(max_length=10, choices=DAYS_OF_WEEK)
+	start_time = models.TimeField()
+	end_time = models.TimeField()
+	specials = models.TextField(help_text="e.g., $5 appetizers, $6 cocktails")
+	created_at = models.DateTimeField(auto_now_add=True)
+	
+	class Meta:
+		ordering = ['day_of_week', 'start_time']
+	
+	def __str__(self):
+		return f"{self.restaurant.name} - {self.get_day_of_week_display()} {self.start_time.strftime('%I:%M%p')}-{self.end_time.strftime('%I:%M%p')}"
+
+
 class Menu(models.Model):
 	restaurant = models.OneToOneField(Restaurant, on_delete=models.CASCADE, related_name='menu')
 	created_at = models.DateTimeField(auto_now_add=True)
@@ -229,3 +253,45 @@ class CustomListItem(models.Model):
 		elif self.restaurant:
 			return f"{self.restaurant.name} in {self.custom_list.title}"
 		return f"Item in {self.custom_list.title}"
+
+
+class Notification(models.Model):
+	NOTIFICATION_TYPES = [
+		('menu_item_added', 'New menu item at favorite restaurant'),
+		('review_like', 'Someone liked your review'),
+		('comment', 'Someone commented on your review'),
+		('follow', 'Someone followed you'),
+		('post_like', 'Someone liked your post'),
+		('post_comment', 'Someone commented on your post'),
+	]
+	
+	user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='notifications')
+	notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+	restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, null=True, blank=True)
+	menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, null=True, blank=True)
+	review = models.ForeignKey(Review, on_delete=models.CASCADE, null=True, blank=True)
+	post = models.ForeignKey('posts.Post', on_delete=models.CASCADE, null=True, blank=True)
+	triggered_by = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, null=True, blank=True, related_name='triggered_notifications')
+	is_read = models.BooleanField(default=False)
+	created_at = models.DateTimeField(auto_now_add=True)
+	
+	class Meta:
+		ordering = ['-created_at']
+	
+	def __str__(self):
+		return f"{self.notification_type} for {self.user.username}"
+	
+	def get_message(self):
+		if self.notification_type == 'menu_item_added' and self.menu_item and self.restaurant:
+			return f"New item '{self.menu_item.name}' added to {self.restaurant.name}"
+		elif self.notification_type == 'review_like' and self.triggered_by:
+			return f"{self.triggered_by.username} liked your review"
+		elif self.notification_type == 'comment' and self.triggered_by:
+			return f"{self.triggered_by.username} commented on your review"
+		elif self.notification_type == 'follow' and self.triggered_by:
+			return f"{self.triggered_by.username} started following you"
+		elif self.notification_type == 'post_like' and self.triggered_by:
+			return f"{self.triggered_by.username} liked your post"
+		elif self.notification_type == 'post_comment' and self.triggered_by:
+			return f"{self.triggered_by.username} commented on your post"
+		return "New notification"

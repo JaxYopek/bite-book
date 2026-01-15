@@ -2,7 +2,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from .models import Restaurant, Menu, MenuItem, Review, Profile, Follow, ReviewLike, RestaurantList, Comment, CustomList, CustomListItem
+from .models import Restaurant, Menu, MenuItem, Review, Profile, Follow, ReviewLike, RestaurantList, Comment, CustomList, CustomListItem, HappyHour, Notification
 from posts.models import Post
 from django import forms
 from django.http import JsonResponse
@@ -69,7 +69,11 @@ def restaurant_search(request):
 	page_number = request.GET.get('page', 1)
 	selected_types = request.GET.getlist('cuisine_type')
 	selected_location = request.GET.get('location', '')
-	happy_hour_only = request.GET.get('happy_hour') == 'true'
+	happy_hour_mode = request.GET.get('happy_hour_mode') == 'true'
+	selected_days = request.GET.get('hh_days', '').split(',') if request.GET.get('hh_days') else []
+	selected_days = [day.strip() for day in selected_days if day.strip()]  # Clean up the list
+	selected_time = request.GET.get('hh_time', '')
+	
 	restaurants = Restaurant.objects.all()
 	if query:
 		restaurants = restaurants.filter(
@@ -86,8 +90,28 @@ def restaurant_search(request):
 		restaurants = restaurants.filter(cuisine_type__in=selected_types)
 	if selected_location:
 		restaurants = restaurants.filter(city__iexact=selected_location)
-	if happy_hour_only:
-		restaurants = restaurants.exclude(happy_hour__isnull=True).exclude(happy_hour='')
+	
+	# Handle happy hour mode filters
+	if happy_hour_mode:
+		# Start with restaurants that have happy hours
+		restaurants = restaurants.filter(happy_hours__isnull=False).distinct()
+		
+		if selected_days:
+			# Filter by multiple days (OR logic - match any of the selected days)
+			restaurants = restaurants.filter(happy_hours__day_of_week__in=selected_days).distinct()
+		
+		if selected_time:
+			# Filter by specific time (format: HH:MM)
+			from datetime import datetime
+			try:
+				filter_time = datetime.strptime(selected_time, '%H:%M').time()
+				restaurants = restaurants.filter(
+					happy_hours__start_time__lte=filter_time,
+					happy_hours__end_time__gte=filter_time
+				).distinct()
+			except ValueError:
+				pass
+	
 	paginator = Paginator(restaurants.order_by('-created_at'), 10)
 	page_obj = paginator.get_page(page_number)
 	
@@ -144,7 +168,9 @@ def restaurant_search(request):
 		'selected_types': selected_types,
 		'selected_location': selected_location,
 		'form_errors': form_errors,
-		'happy_hour_only': happy_hour_only,
+		'happy_hour_mode': happy_hour_mode,
+		'selected_day': ','.join(selected_days),  # Convert list back to comma-separated string for template
+		'selected_time': selected_time,
 		'google_maps_api_key': settings.GOOGLE_MAPS_API_KEY,
 	})
 
@@ -186,12 +212,16 @@ def restaurant_detail(request, restaurant_id):
 		list_type='want_to_try'
 	).exists()
 	
+	# Get happy hour information
+	happy_hours = restaurant.happy_hours.all()
+	
 	return render(request, 'restaurant_detail.html', {
 		'restaurant': restaurant,
 		'rating_stats': rating_stats,
 		'review_count': review_count,
 		'is_favorite': is_favorite,
-		'is_want_to_try': is_want_to_try
+		'is_want_to_try': is_want_to_try,
+		'happy_hours': happy_hours
 	})
 
 
@@ -203,6 +233,9 @@ def add_menu(request, restaurant_id):
 	
 	if request.method == 'POST':
 		menu = Menu.objects.create(restaurant=restaurant)
+		
+		# Save menu items
+		created_items = []
 		for key, value in request.POST.items():
 			if key.startswith('item_name_'):
 				index = key.split('_')[-1]
@@ -210,7 +243,53 @@ def add_menu(request, restaurant_id):
 				description = request.POST.get(f'item_description_{index}', '')
 				price = request.POST.get(f'item_price_{index}')
 				if name and price:
-					MenuItem.objects.create(menu=menu, name=name, description=description, price=price)
+					menu_item = MenuItem.objects.create(menu=menu, name=name, description=description, price=price)
+					created_items.append(menu_item)
+		
+		# Create notifications for users who have favorited this restaurant
+		if created_items:
+			favorite_users = RestaurantList.objects.filter(
+				restaurant=restaurant,
+				list_type='favorite'
+			).exclude(user=request.user).select_related('user')
+			
+			for fav in favorite_users:
+				# Notify about first item (to avoid spam)
+				Notification.objects.create(
+					user=fav.user,
+					notification_type='menu_item_added',
+					restaurant=restaurant,
+					menu_item=created_items[0],
+					triggered_by=request.user
+				)
+		
+		# Save happy hour entries
+		from datetime import datetime
+		happy_hour_count = int(request.POST.get('happy_hour_count', 0))
+		for i in range(happy_hour_count):
+			days = request.POST.getlist(f'hh_days_{i}')
+			start_time = request.POST.get(f'hh_start_time_{i}')
+			end_time = request.POST.get(f'hh_end_time_{i}')
+			specials = request.POST.get(f'hh_specials_{i}', '')
+			
+			if days and start_time and end_time:
+				# Convert time strings to time objects
+				try:
+					start_time_obj = datetime.strptime(start_time, '%H:%M').time()
+					end_time_obj = datetime.strptime(end_time, '%H:%M').time()
+					
+					# Create HappyHour entry for each selected day
+					for day in days:
+						HappyHour.objects.create(
+							restaurant=restaurant,
+							day_of_week=day,
+							start_time=start_time_obj,
+							end_time=end_time_obj,
+							specials=specials
+						)
+				except ValueError:
+					pass  # Skip invalid time entries
+		
 		return redirect('view_menu', restaurant_id=restaurant_id)
 	
 	return render(request, 'add_menu.html', {'restaurant': restaurant})
@@ -224,12 +303,56 @@ def view_menu(request, restaurant_id):
 		return redirect('add_menu', restaurant_id=restaurant_id)
 	
 	if request.method == 'POST':
-		# Handle adding new item
-		name = request.POST.get('name')
-		description = request.POST.get('description', '')
-		price = request.POST.get('price')
-		if name and price:
-			MenuItem.objects.create(menu=menu, name=name, description=description, price=price)
+		action = request.POST.get('action', 'add_item')
+		
+		if action == 'add_item':
+			# Handle adding new menu item
+			name = request.POST.get('name')
+			description = request.POST.get('description', '')
+			price = request.POST.get('price')
+			if name and price:
+				menu_item = MenuItem.objects.create(menu=menu, name=name, description=description, price=price)
+				
+				# Create notifications for users who have favorited this restaurant
+				favorite_users = RestaurantList.objects.filter(
+					restaurant=restaurant,
+					list_type='favorite'
+				).exclude(user=request.user).select_related('user')
+				
+				for fav in favorite_users:
+					Notification.objects.create(
+						user=fav.user,
+						notification_type='menu_item_added',
+						restaurant=restaurant,
+						menu_item=menu_item,
+						triggered_by=request.user
+					)
+		
+		elif action == 'add_happy_hour':
+			# Handle adding happy hour
+			from datetime import datetime
+			days = request.POST.getlist('hh_days')
+			start_time = request.POST.get('hh_start_time')
+			end_time = request.POST.get('hh_end_time')
+			specials = request.POST.get('hh_specials', '')
+			
+			if days and start_time and end_time:
+				try:
+					start_time_obj = datetime.strptime(start_time, '%H:%M').time()
+					end_time_obj = datetime.strptime(end_time, '%H:%M').time()
+					
+					# Create HappyHour entry for each selected day
+					for day in days:
+						HappyHour.objects.create(
+							restaurant=restaurant,
+							day_of_week=day,
+							start_time=start_time_obj,
+							end_time=end_time_obj,
+							specials=specials
+						)
+				except ValueError:
+					pass  # Skip invalid time entries
+		
 		return redirect('view_menu', restaurant_id=restaurant_id)
 	
 	# Get search query
@@ -272,11 +395,15 @@ def view_menu(request, restaurant_id):
 			'menu_items_with_stats': menu_items_with_stats,
 		})
 	
+	# Get happy hour information
+	happy_hours = restaurant.happy_hours.all()
+	
 	return render(request, 'view_menu.html', {
 		'restaurant': restaurant,
 		'menu': menu,
 		'menu_items_with_stats': menu_items_with_stats,
-		'search_query': search_query
+		'search_query': search_query,
+		'happy_hours': happy_hours
 	})
 
 
@@ -348,6 +475,11 @@ def feed(request):
 				post_data['like_count'] = review.likes.count()
 				post_data['user_has_liked'] = review.likes.filter(user=request.user).exists()
 				post_data['comments'] = review.comments.select_related('user', 'user__profile').all()
+		else:
+			# For non-review posts (diary, list), use PostLike and PostComment
+			post_data['like_count'] = post.likes.count()
+			post_data['user_has_liked'] = post.likes.filter(user=request.user).exists()
+			post_data['comments'] = post.comments.select_related('user', 'user__profile').all()
 		
 		posts_with_likes.append(post_data)
 	
@@ -501,6 +633,15 @@ def like_review(request, review_id):
 		liked = False
 	else:
 		liked = True
+		# Create notification for the review author
+		if review.user and review.user != request.user:
+			Notification.objects.create(
+				user=review.user,
+				notification_type='review_like',
+				review=review,
+				menu_item=review.menu_item,
+				triggered_by=request.user
+			)
 	
 	# Return JSON for AJAX or redirect for regular requests
 	if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -553,6 +694,16 @@ def add_comment(request, review_id):
 				text=text
 			)
 			
+			# Create notification for the review author
+			if review.user and review.user != request.user:
+				Notification.objects.create(
+					user=review.user,
+					notification_type='comment',
+					review=review,
+					menu_item=review.menu_item,
+					triggered_by=request.user
+				)
+			
 			# Return JSON for AJAX requests
 			if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
 				# Get profile info
@@ -578,6 +729,22 @@ def add_comment(request, review_id):
 						'created_at': 'just now'
 					}
 				})
+	
+	return redirect(request.META.get('HTTP_REFERER', 'feed'))
+
+
+@login_required
+def delete_comment(request, comment_id):
+	comment = get_object_or_404(Comment, id=comment_id)
+	
+	# Only allow the comment author to delete it
+	if comment.user != request.user:
+		return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+	
+	comment.delete()
+	
+	if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+		return JsonResponse({'success': True})
 	
 	return redirect(request.META.get('HTTP_REFERER', 'feed'))
 
@@ -816,3 +983,55 @@ def search_dishes_for_list(request):
 	} for item in menu_items]
 	
 	return JsonResponse({'results': results})
+
+
+@login_required
+def notifications(request):
+	# Mark all as read if requested
+	if request.GET.get('mark_read') == 'all':
+		Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+		return redirect('notifications')
+	
+	# Get unread count before slicing
+	unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+	
+	# Get notifications with slice
+	user_notifications = Notification.objects.filter(user=request.user).select_related(
+		'triggered_by', 'restaurant', 'menu_item', 'review'
+	).order_by('-created_at')[:50]
+	
+	return render(request, 'notifications.html', {
+		'notifications': user_notifications,
+		'unread_count': unread_count
+	})
+
+
+@login_required
+def mark_notification_read(request, notification_id):
+	notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+	notification.is_read = True
+	notification.save()
+	
+	# Redirect to appropriate page based on notification type
+	if notification.notification_type == 'menu_item_added' and notification.restaurant:
+		return redirect('restaurant_detail', restaurant_id=notification.restaurant.id)
+	elif notification.notification_type in ['review_like', 'comment'] and notification.review:
+		# Try to find the post associated with this review
+		from posts.models import Post
+		post = Post.objects.filter(
+			menu_item=notification.menu_item,
+			user=notification.review.user,
+			rating=notification.review.rating
+		).first()
+		if post:
+			return redirect('post_detail', post_id=post.id)
+		# Fallback to menu page if no post found
+		return redirect('view_menu', restaurant_id=notification.menu_item.menu.restaurant.id)
+	
+	return redirect('notifications')
+
+
+@login_required
+def get_unread_notification_count(request):
+	count = Notification.objects.filter(user=request.user, is_read=False).count()
+	return JsonResponse({'count': count})

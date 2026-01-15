@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>{% block title %}bitebook{% endblock %}</title>
     <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Global Styles */
         body {
@@ -80,20 +81,64 @@
             margin: 0;
             padding: 0;
             display: flex;
+            gap: 30px;
         }
         nav ul li {
-            margin-left: 20px;
+            position: relative;
         }
         nav ul li:last-child {
             margin-right: 20px;
         }
-        nav ul li a {
+        nav ul li a, nav ul li button.nav-btn {
             color: #5B5941;
             text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 10px;
+            transition: color 0.2s;
         }
-        nav ul li a:hover {
+        nav ul li a:hover, nav ul li button.nav-btn:hover {
             color: #FB8B24;
-            text-decoration: underline;
+        }
+        nav ul li a .nav-icon, nav ul li button.nav-btn .nav-icon {
+            font-size: 24px;
+            line-height: 1;
+        }
+        nav ul li a .nav-text, nav ul li button.nav-btn .nav-text {
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .notification-badge {
+            position: absolute;
+            top: 3px;
+            right: 8px;
+            background-color: #E53935;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+            min-width: 16px;
+            text-align: center;
+        }
+        .notification-dot {
+            position: absolute;
+            top: 5px;
+            right: 12px;
+            width: 8px;
+            height: 8px;
+            background-color: #E53935;
+            border-radius: 50%;
+            border: 2px solid #FFFFFF;
+        }
+        button.nav-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            font-family: inherit;
         }
 
         /* Buttons */
@@ -195,18 +240,65 @@
     <nav>
         <a href="{% url 'feed' %}" class="nav-logo">bitebook</a>
         <ul>
-            <li><a href="{% url 'create_diary_entry' %}">Create Post</a></li>
-            <li><a href="{% url 'my_lists' %}">My Lists</a></li>
-            <li><a href="{% url 'user_profile' %}">My Profile</a></li>
-            <li><a href="{% url 'restaurant_search' %}">Restaurants</a></li>
+            <li>
+                <a href="{% url 'restaurant_search' %}">
+                    <span class="nav-icon"><i class="fas fa-utensils"></i></span>
+                    <span class="nav-text">Restaurants</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'my_lists' %}">
+                    <span class="nav-icon"><i class="fas fa-list"></i></span>
+                    <span class="nav-text">My Lists</span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'notifications' %}" id="notificationLink">
+                    <span class="nav-icon"><i class="fas fa-bell"></i></span>
+                    <span class="nav-text">Notifications</span>
+                    <span id="notificationBadge" class="notification-badge" style="display: none;"></span>
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'user_profile' %}">
+                    <span class="nav-icon"><i class="fas fa-user"></i></span>
+                    <span class="nav-text">Profile</span>
+                </a>
+            </li>
             <li>
                 <form method="post" action="{% url 'logout' %}" style="display: inline; padding: 0; margin: 0; border: none; background: transparent;">
                     {% csrf_token %}
-                    <button type="submit" style="background: transparent; border: none; color: #5B5941; cursor: pointer; padding: 0; font-size: inherit; font-family: inherit;">Logout</button>
+                    <button type="submit" class="nav-btn">
+                        <span class="nav-icon"><i class="fas fa-sign-out-alt"></i></span>
+                        <span class="nav-text">Logout</span>
+                    </button>
                 </form>
             </li>
         </ul>
     </nav>
+    <script>
+        // Fetch and update notification count
+        function updateNotificationCount() {
+            fetch('/api/notifications/unread-count/')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('notificationBadge');
+                    if (data.count > 0) {
+                        badge.textContent = data.count > 99 ? '99+' : data.count;
+                        badge.style.display = 'block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error fetching notification count:', error));
+        }
+        
+        // Update count on page load
+        updateNotificationCount();
+        
+        // Update count every 30 seconds
+        setInterval(updateNotificationCount, 30000);
+    </script>
     {% endif %}
     <div class="content-wrapper">
         <div class="main-content">

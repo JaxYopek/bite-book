@@ -3,6 +3,22 @@
 <div class="container">
   <h2>Recent Posts</h2>
   
+  <!-- Create Post Form -->
+  <div class="card" style="padding: 20px; margin-bottom: 20px;">
+    <form method="post" action="{% url 'create_diary_entry' %}" style="padding: 0; border: none; background: transparent; margin: 0;">
+      {% csrf_token %}
+      <div style="margin-bottom: 15px;">
+        <label for="id_title" style="display: block; margin-bottom: 5px; font-weight: 500;">Title</label>
+        <input type="text" name="title" id="id_title" required maxlength="200" placeholder="What's on your mind?" style="width: 100%; padding: 12px; border: 1px solid rgba(91, 89, 65, 0.3); border-radius: 8px; font-size: 1em;">
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label for="id_review_text" style="display: block; margin-bottom: 5px; font-weight: 500;">Post</label>
+        <textarea name="review_text" id="id_review_text" rows="3" placeholder="Share your thoughts..." style="width: 100%; padding: 12px; border: 1px solid rgba(91, 89, 65, 0.3); border-radius: 8px; font-size: 1em; resize: vertical;"></textarea>
+      </div>
+      <button type="submit" style="width: 100%; padding: 12px; background-color: #FB8B24; color: #F7EDE2; border: none; border-radius: 8px; font-size: 1em; font-weight: 500; cursor: pointer;">Post</button>
+    </form>
+  </div>
+  
   {% if following_count == 0 %}
     <div class="card" style="padding: 40px; text-align: center;">
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 20px;">
@@ -37,23 +53,36 @@
           
           <!-- Post Content -->
           <div style="flex: 1; min-width: 0;">
-            <div style="margin-bottom: 8px;">
-              <a href="{% url 'view_user_profile' post.user.username %}" style="font-weight: 600; font-size: 1.05em; color: #5B5941;">
-                {% if post.user.profile.display_name %}
-                  {{ post.user.profile.display_name }}
-                {% else %}
-                  {{ post.user.username }}
+            <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <a href="{% url 'view_user_profile' post.user.username %}" style="font-weight: 600; font-size: 1.05em; color: #5B5941;">
+                  {% if post.user.profile.display_name %}
+                    {{ post.user.profile.display_name }}
+                  {% else %}
+                    {{ post.user.username }}
+                  {% endif %}
+                </a>
+                {% if item.is_top_reviewer %}
+                  <span style="display: inline-flex; align-items: center; gap: 2px; background-color: rgba(251, 139, 36, 0.1); color: #FB8B24; padding: 2px 6px; border-radius: 8px; font-size: 0.65em; font-weight: 500; margin-left: 5px; border: 1px solid rgba(251, 139, 36, 0.3);">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="#FB8B24" stroke="none">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    Top Reviewer
+                  </span>
                 {% endif %}
-              </a>
-              {% if item.is_top_reviewer %}
-                <span style="display: inline-flex; align-items: center; gap: 2px; background-color: rgba(251, 139, 36, 0.1); color: #FB8B24; padding: 2px 6px; border-radius: 8px; font-size: 0.65em; font-weight: 500; margin-left: 5px; border: 1px solid rgba(251, 139, 36, 0.3);">
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="#FB8B24" stroke="none">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                  </svg>
-                  Top Reviewer
-                </span>
+                <span style="color: rgba(91, 89, 65, 0.6); font-size: 0.9em; margin-left: 8px;">@{{ post.user.username }}</span>
+              </div>
+              
+              {% if post.user == user %}
+              <button onclick="deletePost(event, {{ post.id }})" style="background: none; border: none; cursor: pointer; color: rgba(91, 89, 65, 0.5); padding: 5px; transition: color 0.2s;" onmouseover="this.style.color='#d32f2f'" onmouseout="this.style.color='rgba(91, 89, 65, 0.5)'">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
               {% endif %}
-              <span style="color: rgba(91, 89, 65, 0.6); font-size: 0.9em; margin-left: 8px;">@{{ post.user.username }}</span>
             </div>
             
             <h4 style="margin: 8px 0; font-size: 1.1em;">{{ post.title }}</h4>
@@ -115,11 +144,25 @@
                   </svg>
                   <span id="comment-count-{{ item.review.id }}">{{ item.comments|length }}</span>
                 </button>
+              {% else %}
+                <a href="{% url 'like_post' post.id %}" id="like-btn-post-{{ post.id }}" style="display: flex; align-items: center; gap: 5px; text-decoration: none; cursor: pointer;" onclick="likePost(event, {{ post.id }}, {{ item.user_has_liked|yesno:'true,false' }})">
+                  <svg id="like-icon-post-{{ post.id }}" width="18" height="18" viewBox="0 0 24 24" fill="{% if item.user_has_liked %}#FB8B24{% else %}none{% endif %}" stroke="{% if item.user_has_liked %}#FB8B24{% else %}rgba(91, 89, 65, 0.6){% endif %}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                  </svg>
+                  <span id="like-count-post-{{ post.id }}" style="color: rgba(91, 89, 65, 0.7); font-size: 0.9em;">{{ item.like_count }}</span>
+                </a>
+                
+                <button onclick="toggleCommentsPost({{ post.id }})" style="display: flex; align-items: center; gap: 5px; background: none; border: none; padding: 0; cursor: pointer; color: rgba(91, 89, 65, 0.6); font-size: 0.9em;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span id="comment-count-post-{{ post.id }}">{{ item.comments|length }}</span>
+                </button>
               {% endif %}
             </div>
             
             {% if item.review %}
-              <!-- Comments Section -->
+              <!-- Comments Section for Reviews -->
               <div id="comments-{{ item.review.id }}" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(91, 89, 65, 0.1);">
                 {% if item.comments %}
                   <div id="comments-list-{{ item.review.id }}" style="margin-bottom: 15px;">
@@ -135,15 +178,25 @@
                           {% endif %}
                         </a>
                         <div style="flex: 1;">
-                          <div style="margin-bottom: 3px;">
-                            <a href="{% url 'view_user_profile' comment.user.username %}" style="font-weight: 600; font-size: 0.9em; color: #5B5941;">
-                              {% if comment.user.profile.display_name %}
-                                {{ comment.user.profile.display_name }}
-                              {% else %}
-                                {{ comment.user.username }}
-                              {% endif %}
-                            </a>
-                            <span style="color: rgba(91, 89, 65, 0.5); font-size: 0.75em; margin-left: 6px;">{{ comment.created_at|timesince }} ago</span>
+                          <div style="margin-bottom: 3px; display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                              <a href="{% url 'view_user_profile' comment.user.username %}" style="font-weight: 600; font-size: 0.9em; color: #5B5941;">
+                                {% if comment.user.profile.display_name %}
+                                  {{ comment.user.profile.display_name }}
+                                {% else %}
+                                  {{ comment.user.username }}
+                                {% endif %}
+                              </a>
+                              <span style="color: rgba(91, 89, 65, 0.5); font-size: 0.75em; margin-left: 6px;">{{ comment.created_at|timesince }} ago</span>
+                            </div>
+                            {% if comment.user == user %}
+                            <button onclick="deleteComment(event, {{ comment.id }}, 'review')" style="background: none; border: none; cursor: pointer; color: rgba(91, 89, 65, 0.4); padding: 2px; transition: color 0.2s;" onmouseover="this.style.color='#d32f2f'" onmouseout="this.style.color='rgba(91, 89, 65, 0.4)'">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                            {% endif %}
                           </div>
                           <p style="margin: 0; font-size: 0.9em; color: rgba(91, 89, 65, 0.9);">{{ comment.text }}</p>
                         </div>
@@ -158,6 +211,59 @@
                 <form id="comment-form-{{ item.review.id }}" method="POST" action="{% url 'add_comment' item.review.id %}" style="display: flex; gap: 10px;" onsubmit="addComment(event, {{ item.review.id }})">
                   {% csrf_token %}
                   <input id="comment-input-{{ item.review.id }}" type="text" name="text" placeholder="Add a comment..." required style="flex: 1; padding: 8px 12px; border: 1px solid rgba(91, 89, 65, 0.2); border-radius: 20px; font-size: 0.9em;">
+                  <button type="submit" style="padding: 8px 20px; background-color: #FB8B24; border: none; border-radius: 20px; font-size: 0.9em; cursor: pointer;">Post</button>
+                </form>
+              </div>
+            {% else %}
+              <!-- Comments Section for Posts -->
+              <div id="comments-post-{{ post.id }}" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(91, 89, 65, 0.1);">
+                {% if item.comments %}
+                  <div id="comments-list-post-{{ post.id }}" style="margin-bottom: 15px;">
+                    {% for comment in item.comments %}
+                      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                        <a href="{% url 'view_user_profile' comment.user.username %}" style="flex-shrink: 0;">
+                          {% if comment.user.profile.profile_picture %}
+                            <img src="{{ comment.user.profile.profile_picture.url }}" alt="{{ comment.user.username }}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid #FB8B24;">
+                          {% else %}
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #5B5941; display: flex; align-items: center; justify-content: center; color: #F7EDE2; font-weight: bold; font-size: 0.9em; border: 1.5px solid #FB8B24;">
+                              {{ comment.user.username|first|upper }}
+                            </div>
+                          {% endif %}
+                        </a>
+                        <div style="flex: 1;">
+                          <div style="margin-bottom: 3px; display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                              <a href="{% url 'view_user_profile' comment.user.username %}" style="font-weight: 600; font-size: 0.9em; color: #5B5941;">
+                                {% if comment.user.profile.display_name %}
+                                  {{ comment.user.profile.display_name }}
+                                {% else %}
+                                  {{ comment.user.username }}
+                                {% endif %}
+                              </a>
+                              <span style="color: rgba(91, 89, 65, 0.5); font-size: 0.75em; margin-left: 6px;">{{ comment.created_at|timesince }} ago</span>
+                            </div>
+                            {% if comment.user == user %}
+                            <button onclick="deleteComment(event, {{ comment.id }}, 'post')" style="background: none; border: none; cursor: pointer; color: rgba(91, 89, 65, 0.4); padding: 2px; transition: color 0.2s;" onmouseover="this.style.color='#d32f2f'" onmouseout="this.style.color='rgba(91, 89, 65, 0.4)'">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                            {% endif %}
+                          </div>
+                          <p style="margin: 0; font-size: 0.9em; color: rgba(91, 89, 65, 0.9);">{{ comment.text }}</p>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div id="comments-list-post-{{ post.id }}" style="margin-bottom: 15px; display: none;"></div>
+                {% endif %}
+                
+                <!-- Add Comment Form -->
+                <form id="comment-form-post-{{ post.id }}" method="POST" action="{% url 'add_post_comment' post.id %}" style="display: flex; gap: 10px;" onsubmit="addPostComment(event, {{ post.id }})">
+                  {% csrf_token %}
+                  <input id="comment-input-post-{{ post.id }}" type="text" name="text" placeholder="Add a comment..." required style="flex: 1; padding: 8px 12px; border: 1px solid rgba(91, 89, 65, 0.2); border-radius: 20px; font-size: 0.9em;">
                   <button type="submit" style="padding: 8px 20px; background-color: #FB8B24; border: none; border-radius: 20px; font-size: 0.9em; cursor: pointer;">Post</button>
                 </form>
               </div>
@@ -182,7 +288,6 @@
   
   {% endif %}
 </div>
-
 <script>
 function toggleComments(reviewId) {
   const commentsDiv = document.getElementById(`comments-${reviewId}`);
@@ -191,6 +296,114 @@ function toggleComments(reviewId) {
   } else {
     commentsDiv.style.display = 'none';
   }
+}
+
+function toggleCommentsPost(postId) {
+  const commentsDiv = document.getElementById(`comments-post-${postId}`);
+  if (commentsDiv.style.display === 'none') {
+    commentsDiv.style.display = 'block';
+  } else {
+    commentsDiv.style.display = 'none';
+  }
+}
+
+function likePost(event, postId, currentlyLiked) {
+  event.preventDefault();
+  
+  fetch(`/posts/${postId}/like/`, {
+    method: 'GET',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+  })
+  .then(response => response.json())
+  .then(data => {
+    const icon = document.getElementById(`like-icon-post-${postId}`);
+    const count = document.getElementById(`like-count-post-${postId}`);
+    
+    if (data.liked) {
+      icon.setAttribute('fill', '#FB8B24');
+      icon.setAttribute('stroke', '#FB8B24');
+    } else {
+      icon.setAttribute('fill', 'none');
+      icon.setAttribute('stroke', 'rgba(91, 89, 65, 0.6)');
+    }
+    
+    count.textContent = data.like_count;
+  })
+  .catch(error => console.error('Error:', error));
+}
+
+function addPostComment(event, postId) {
+  event.preventDefault();
+  
+  const form = document.getElementById(`comment-form-post-${postId}`);
+  const input = document.getElementById(`comment-input-post-${postId}`);
+  const text = input.value.trim();
+  
+  if (!text) return;
+  
+  const formData = new FormData(form);
+  
+  fetch(form.action, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+    },
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      const commentsList = document.getElementById(`comments-list-post-${postId}`);
+      
+      // Show the comments list if it's hidden
+      if (commentsList.style.display === 'none') {
+        commentsList.style.display = 'block';
+      }
+      
+      // Create profile picture HTML
+      let profilePicHtml;
+      if (data.comment.profile_picture_url) {
+        profilePicHtml = `<img src="${data.comment.profile_picture_url}" alt="${data.comment.username}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1.5px solid #FB8B24;">`;
+      } else {
+        profilePicHtml = `<div style="width: 32px; height: 32px; border-radius: 50%; background-color: #5B5941; display: flex; align-items: center; justify-content: center; color: #F7EDE2; font-weight: bold; font-size: 0.9em; border: 1.5px solid #FB8B24;">${data.comment.username.charAt(0).toUpperCase()}</div>`;
+      }
+      
+      // Create new comment HTML
+      const commentHtml = `
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+          <a href="/user/${data.comment.username}/" style="flex-shrink: 0;">
+            ${profilePicHtml}
+          </a>
+          <div style="flex: 1;">
+            <div style="margin-bottom: 3px;">
+              <a href="/user/${data.comment.username}/" style="font-weight: 600; font-size: 0.9em; color: #5B5941;">
+                ${data.comment.display_name}
+              </a>
+              <span style="color: rgba(91, 89, 65, 0.5); font-size: 0.75em; margin-left: 6px;">${data.comment.created_at}</span>
+            </div>
+            <p style="margin: 0; font-size: 0.9em; color: rgba(91, 89, 65, 0.9);">${data.comment.text}</p>
+          </div>
+        </div>
+      `;
+      
+      // Add comment to the list
+      commentsList.insertAdjacentHTML('beforeend', commentHtml);
+      
+      // Update comment count
+      const countSpan = document.getElementById(`comment-count-post-${postId}`);
+      if (countSpan) {
+        const currentCount = parseInt(countSpan.textContent);
+        countSpan.textContent = currentCount + 1;
+      }
+      
+      // Clear the input
+      input.value = '';
+    }
+  })
+  .catch(error => console.error('Error:', error));
 }
 
 function addComment(event, reviewId) {
@@ -314,6 +527,76 @@ function likeReview(event, reviewId, currentlyLiked) {
       icon.setAttribute('fill', 'none');
       icon.setAttribute('stroke', 'rgba(91, 89, 65, 0.6)');
     }
+  });
+}
+
+function deletePost(event, postId) {
+  event.preventDefault();
+  
+  if (!confirm('Are you sure you want to delete this post?')) {
+    return;
+  }
+  
+  fetch(`/posts/${postId}/delete/`, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Remove the post from the page
+      const postElement = event.target.closest('li');
+      if (postElement) {
+        postElement.style.opacity = '0';
+        postElement.style.transition = 'opacity 0.3s';
+        setTimeout(() => postElement.remove(), 300);
+      }
+    } else {
+      alert('Error deleting post: ' + data.error);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error deleting post');
+  });
+}
+
+function deleteComment(event, commentId, commentType) {
+  event.preventDefault();
+  
+  if (!confirm('Are you sure you want to delete this comment?')) {
+    return;
+  }
+  
+  const url = commentType === 'review' ? `/comments/${commentId}/delete/` : `/post-comments/${commentId}/delete/`;
+  
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Remove the comment from the page
+      const commentElement = event.target.closest('div[style*="display: flex"][style*="gap: 10px"]');
+      if (commentElement) {
+        commentElement.style.opacity = '0';
+        commentElement.style.transition = 'opacity 0.3s';
+        setTimeout(() => commentElement.remove(), 300);
+      }
+    } else {
+      alert('Error deleting comment: ' + data.error);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error deleting comment');
   });
 }
 </script>

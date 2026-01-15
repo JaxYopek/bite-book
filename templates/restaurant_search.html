@@ -37,22 +37,198 @@
         </select>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <input 
-          type="checkbox" 
-          id="happy-hour-filter" 
-          name="happy_hour" 
-          value="true"
-          {% if happy_hour_only %}checked{% endif %}
-          style="width: 18px; height: 18px; cursor: pointer; accent-color: #FB8B24;"
+      <div style="margin-bottom: 15px;">
+        <button 
+          type="button" 
+          id="happy-hour-toggle-btn"
+          onclick="toggleHappyHourMode()"
+          style="padding: 12px 24px; border-radius: 25px; border: 2px solid #FB8B24; background-color: {% if happy_hour_mode %}#FB8B24; color: #F7EDE2;{% else %}#fff; color: #FB8B24;{% endif %} font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;"
         >
-        <label for="happy-hour-filter" style="cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.9em; color: #5B5941;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FB8B24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          <span style="font-weight: 500;">Happy Hour Only</span>
-        </label>
+          <span>Find Happy Hour</span>
+        </button>
+        <input type="hidden" name="happy_hour_mode" id="happy-hour-mode-input" value="{% if happy_hour_mode %}true{% else %}false{% endif %}">
+      </div>
+      
+      <div id="happy-hour-filters" style="{% if not happy_hour_mode %}display: none;{% endif %} padding: 20px; background-color: rgba(251, 139, 36, 0.05); border-radius: 12px; border: 2px solid rgba(251, 139, 36, 0.2); margin-bottom: 20px;">
+        <h4 style="margin-top: 0; margin-bottom: 15px; color: #5B5941; font-size: 1.1em;">Filter by Day & Time</h4>
+        
+        <!-- Quick Presets -->
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600; color: #5B5941; margin-bottom: 10px; display: block; font-size: 0.9em;">Quick Filter:</label>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button 
+              type="button" 
+              onclick="setQuickFilter('now')"
+              style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(251, 139, 36, 0.4); background-color: #fff; color: #FB8B24; font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              onmouseover="this.style.backgroundColor='rgba(251, 139, 36, 0.1)'"
+              onmouseout="this.style.backgroundColor='#fff'"
+            >
+              Right Now
+            </button>
+            <button 
+              type="button" 
+              onclick="setQuickFilter('tonight')"
+              style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(251, 139, 36, 0.4); background-color: #fff; color: #FB8B24; font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              onmouseover="this.style.backgroundColor='rgba(251, 139, 36, 0.1)'"
+              onmouseout="this.style.backgroundColor='#fff'"
+            >
+              Tonight
+            </button>
+            <button 
+              type="button" 
+              onclick="setQuickFilter('weekend')"
+              style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(251, 139, 36, 0.4); background-color: #fff; color: #FB8B24; font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              onmouseover="this.style.backgroundColor='rgba(251, 139, 36, 0.1)'"
+              onmouseout="this.style.backgroundColor='#fff'"
+            >
+              This Weekend
+            </button>
+          </div>
+        </div>
+        
+        <div style="border-top: 1px solid rgba(251, 139, 36, 0.2); padding-top: 15px;">
+          <label style="font-weight: 600; color: #5B5941; margin-bottom: 10px; display: block; font-size: 0.9em;">Or customize:</label>
+          
+          <!-- Day Pills -->
+          <div style="margin-bottom: 15px;">
+            <label style="font-weight: 500; color: #5B5941; margin-bottom: 8px; display: block; font-size: 0.85em;">Day(s):</label>
+            <input type="hidden" name="hh_days" id="hh-days-input" value="{{ selected_day }}">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button 
+                type="button" 
+                class="day-pill" 
+                data-day=""
+                onclick="selectDay('')"
+                style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if not selected_day %}#5B5941; color: #F7EDE2;{% else %}#fff; color: #5B5941;{% endif %} font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              >
+                Any
+              </button>
+              <button 
+                type="button" 
+                class="day-pill" 
+                data-day="monday"
+                onclick="selectDay('monday')"
+                style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if selected_day == 'monday' %}#5B5941; color: #F7EDE2;{% else %}#fff; color: #5B5941;{% endif %} font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              >
+                Mon
+              </button>
+              <button 
+                type="button" 
+                class="day-pill" 
+                data-day="tuesday"
+                onclick="selectDay('tuesday')"
+                style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if selected_day == 'tuesday' %}#5B5941; color: #F7EDE2;{% else %}#fff; color: #5B5941;{% endif %} font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              >
+                Tue
+              </button>
+              <button 
+                type="button" 
+                class="day-pill" 
+                data-day="wednesday"
+                onclick="selectDay('wednesday')"
+                style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if selected_day == 'wednesday' %}#5B5941; color: #F7EDE2;{% else %}#fff; color: #5B5941;{% endif %} font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              >
+                Wed
+              </button>
+              <button 
+                type="button" 
+                class="day-pill" 
+                data-day="thursday"
+                onclick="selectDay('thursday')"
+                style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if selected_day == 'thursday' %}#5B5941; color: #F7EDE2;{% else %}#fff; color: #5B5941;{% endif %} font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              >
+                Thu
+              </button>
+              <button 
+                type="button" 
+                class="day-pill" 
+                data-day="friday"
+                onclick="selectDay('friday')"
+                style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if selected_day == 'friday' %}#5B5941; color: #F7EDE2;{% else %}#fff; color: #5B5941;{% endif %} font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              >
+                Fri
+              </button>
+              <button 
+                type="button" 
+                class="day-pill" 
+                data-day="saturday"
+                onclick="selectDay('saturday')"
+                style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if selected_day == 'saturday' %}#5B5941; color: #F7EDE2;{% else %}#fff; color: #5B5941;{% endif %} font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              >
+                Sat
+              </button>
+              <button 
+                type="button" 
+                class="day-pill" 
+                data-day="sunday"
+                onclick="selectDay('sunday')"
+                style="padding: 8px 16px; border-radius: 20px; border: 2px solid rgba(91, 89, 65, 0.2); background-color: {% if selected_day == 'sunday' %}#5B5941; color: #F7EDE2;{% else %}#fff; color: #5B5941;{% endif %} font-size: 0.85em; cursor: pointer; font-weight: 500; transition: all 0.2s;"
+              >
+                Sun
+              </button>
+            </div>
+          </div>
+          
+          <!-- Time Presets and Input -->
+          <div>
+            <label style="font-weight: 500; color: #5B5941; margin-bottom: 8px; display: block; font-size: 0.85em;">Time:</label>
+            <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+              <button 
+                type="button" 
+                onclick="setTime('14:00')"
+                style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
+              >
+                2pm
+              </button>
+              <button 
+                type="button" 
+                onclick="setTime('15:00')"
+                style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
+              >
+                3pm
+              </button>
+              <button 
+                type="button" 
+                onclick="setTime('17:00')"
+                style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
+              >
+                5pm
+              </button>
+              <button 
+                type="button" 
+                onclick="setTime('18:00')"
+                style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
+              >
+                6pm
+              </button>
+              <button 
+                type="button" 
+                onclick="setTime('19:00')"
+                style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
+              >
+                7pm
+              </button>
+              <button 
+                type="button" 
+                onclick="setTime('21:00')"
+                style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
+              >
+                9pm
+              </button>
+            </div>
+            <input 
+              type="time" 
+              name="hh_time"
+              id="hh-time-input"
+              value="{{ selected_time }}"
+              style="width: 100%; padding: 10px 15px; border-radius: 8px; border: 2px solid rgba(91, 89, 65, 0.2); font-size: 0.9em; cursor: pointer;"
+            >
+          </div>
+        </div>
       </div>
     </div>
 
@@ -93,6 +269,124 @@
   <script>
     var filterTimeout;
     var selectedCuisines = new Set({{ selected_types|safe }}.map(String));
+    var selectedDays = new Set();
+
+    function toggleHappyHourMode() {
+      const input = document.getElementById('happy-hour-mode-input');
+      const filters = document.getElementById('happy-hour-filters');
+      const btn = document.getElementById('happy-hour-toggle-btn');
+      
+      if (input.value === 'true') {
+        input.value = 'false';
+        filters.style.display = 'none';
+        btn.style.backgroundColor = '#fff';
+        btn.style.color = '#FB8B24';
+      } else {
+        input.value = 'true';
+        filters.style.display = 'block';
+        btn.style.backgroundColor = '#FB8B24';
+        btn.style.color = '#F7EDE2';
+      }
+      
+      filterRestaurants();
+    }
+    
+    function selectDay(day) {
+      // Handle 'Any' button
+      if (day === '') {
+        selectedDays.clear();
+      } else {
+        // Toggle the selected day
+        if (selectedDays.has(day)) {
+          selectedDays.delete(day);
+        } else {
+          selectedDays.add(day);
+        }
+      }
+      
+      // Update hidden input with comma-separated days
+      document.getElementById('hh-days-input').value = Array.from(selectedDays).join(',');
+      
+      // Update pill styles
+      document.querySelectorAll('.day-pill').forEach(pill => {
+        const pillDay = pill.getAttribute('data-day');
+        if (pillDay === '' && selectedDays.size === 0) {
+          pill.style.backgroundColor = '#5B5941';
+          pill.style.color = '#F7EDE2';
+        } else if (selectedDays.has(pillDay)) {
+          pill.style.backgroundColor = '#5B5941';
+          pill.style.color = '#F7EDE2';
+        } else {
+          pill.style.backgroundColor = '#fff';
+          pill.style.color = '#5B5941';
+        }
+      });
+      
+      filterRestaurants();
+    }
+    
+    function setTime(time) {
+      document.getElementById('hh-time-input').value = time;
+      filterRestaurants();
+    }
+    
+    function setQuickFilter(preset) {
+      const now = new Date();
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      
+      if (preset === 'now') {
+        // Set current day and time
+        const currentDay = dayNames[now.getDay()];
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        selectedDays.clear();
+        selectedDays.add(currentDay);
+        document.getElementById('hh-days-input').value = currentDay;
+        updateDayPillStyles();
+        setTime(`${hours}:${minutes}`);
+      } else if (preset === 'tonight') {
+        // Set current day and 6pm
+        const currentDay = dayNames[now.getDay()];
+        selectedDays.clear();
+        selectedDays.add(currentDay);
+        document.getElementById('hh-days-input').value = currentDay;
+        updateDayPillStyles();
+        setTime('18:00');
+      } else if (preset === 'weekend') {
+        // Set Friday AND Saturday at 5pm
+        selectedDays.clear();
+        selectedDays.add('friday');
+        selectedDays.add('saturday');
+        document.getElementById('hh-days-input').value = 'friday,saturday';
+        updateDayPillStyles();
+        setTime('17:00');
+      }
+    }
+    
+    function updateDayPillStyles() {
+      document.querySelectorAll('.day-pill').forEach(pill => {
+        const pillDay = pill.getAttribute('data-day');
+        if (pillDay === '' && selectedDays.size === 0) {
+          pill.style.backgroundColor = '#5B5941';
+          pill.style.color = '#F7EDE2';
+        } else if (selectedDays.has(pillDay)) {
+          pill.style.backgroundColor = '#5B5941';
+          pill.style.color = '#F7EDE2';
+        } else {
+          pill.style.backgroundColor = '#fff';
+          pill.style.color = '#5B5941';
+        }
+      });
+    }
+    
+    function setCurrentTime() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const timeInput = document.getElementById('hh-time-input');
+      timeInput.value = `${hours}:${minutes}`;
+      filterRestaurants();
+    }
 
     function updateCuisineInputs() {
       const container = document.getElementById('cuisine-inputs');
@@ -146,7 +440,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       var searchBar = document.getElementById('search-bar');
       var locationSelect = document.getElementById('location-select');
-      var happyHourCheckbox = document.getElementById('happy-hour-filter');
+      var hhTimeInput = document.getElementById('hh-time-input');
 
       // Category pill click handlers
       document.querySelectorAll('.category-pill').forEach(pill => {
@@ -177,10 +471,10 @@
           filterRestaurants();
         });
       }
-
-      // Happy hour checkbox change handler
-      if (happyHourCheckbox) {
-        happyHourCheckbox.addEventListener('change', function() {
+      
+      // Happy hour time input change
+      if (hhTimeInput) {
+        hhTimeInput.addEventListener('change', function() {
           filterRestaurants();
         });
       }
