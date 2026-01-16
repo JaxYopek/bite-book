@@ -48,6 +48,74 @@ def root_redirect(request):
 		return redirect('feed')
 	return redirect('login')
 
+@login_required
+def search(request):
+	query = request.GET.get('q', '').strip()
+	users = []
+	restaurants = []
+	
+	if query:
+		User = get_user_model()
+		# Search for users by username or display name
+		users = User.objects.filter(
+			models.Q(username__icontains=query) |
+			models.Q(profile__display_name__icontains=query)
+		).distinct()[:10]
+		
+		# Search for restaurants by name or city
+		restaurants = Restaurant.objects.filter(
+			models.Q(name__icontains=query) |
+			models.Q(city__icontains=query)
+		).distinct()[:10]
+	
+	return render(request, 'search_results.html', {
+		'query': query,
+		'users': users,
+		'restaurants': restaurants
+	})
+
+
+@login_required
+def live_search(request):
+	"""API endpoint for real-time search dropdown"""
+	query = request.GET.get('q', '').strip()
+	results = {
+		'users': [],
+		'restaurants': []
+	}
+	
+	if query:
+		User = get_user_model()
+		# Search for users by username or display name
+		users = User.objects.filter(
+			models.Q(username__icontains=query) |
+			models.Q(profile__display_name__icontains=query)
+		).distinct()[:5]
+		
+		results['users'] = [
+			{
+				'username': user.username,
+				'display_name': user.profile.display_name if hasattr(user, 'profile') and user.profile.display_name else user.username
+			}
+			for user in users
+		]
+		
+		# Search for restaurants by name or city
+		restaurants = Restaurant.objects.filter(
+			models.Q(name__icontains=query) |
+			models.Q(city__icontains=query)
+		).distinct()[:5]
+		
+		results['restaurants'] = [
+			{
+				'id': restaurant.id,
+				'name': restaurant.name,
+				'city': restaurant.city
+			}
+			for restaurant in restaurants
+		]
+	
+	return JsonResponse(results)
 
 
 @login_required
@@ -563,7 +631,14 @@ def signup(request):
 def follow_user(request, username):
 	user_to_follow = get_object_or_404(get_user_model(), username=username)
 	if user_to_follow != request.user:
-		Follow.objects.get_or_create(follower=request.user, following=user_to_follow)
+		follow, created = Follow.objects.get_or_create(follower=request.user, following=user_to_follow)
+		if created:
+			# Create notification for the user being followed
+			Notification.objects.create(
+				user=user_to_follow,
+				notification_type='follow',
+				triggered_by=request.user
+			)
 	return redirect('view_user_profile', username=username)
 
 @login_required

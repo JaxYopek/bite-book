@@ -179,13 +179,6 @@
             <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
               <button 
                 type="button" 
-                onclick="setTime('14:00')"
-                style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
-              >
-                2pm
-              </button>
-              <button 
-                type="button" 
                 onclick="setTime('15:00')"
                 style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
               >
@@ -211,13 +204,6 @@
                 style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
               >
                 7pm
-              </button>
-              <button 
-                type="button" 
-                onclick="setTime('21:00')"
-                style="padding: 6px 12px; border-radius: 15px; border: 1px solid rgba(251, 139, 36, 0.3); background-color: #fff; color: #FB8B24; font-size: 0.8em; cursor: pointer; font-weight: 500;"
-              >
-                9pm
               </button>
             </div>
             <input 
@@ -743,7 +729,7 @@
             </a>
         </div>
       {% empty %}
-        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: rgba(91, 89, 65, 0.5);">
+        <div style="width: 100%; text-align: center; padding: 40px; color: rgba(91, 89, 65, 0.5);">
           <p style="font-size: 1.2em; margin: 0;">No restaurants found</p>
           <p style="font-size: 0.9em; margin-top: 5px;">Try adjusting your search or filters</p>
         </div>

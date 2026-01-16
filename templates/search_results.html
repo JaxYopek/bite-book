@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <h2 style="margin-bottom: 10px;">Search Results</h2>
+  {% if query %}
+    <p style="color: rgba(91, 89, 65, 0.6); margin-bottom: 30px;">Results for "{{ query }}"</p>
+
+    <!-- Users Section -->
+    <h3 style="margin: 30px 0 15px 0; display: flex; align-items: center; gap: 8px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FB8B24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      People
+    </h3>
+    {% if users %}
+      <div style="display: grid; gap: 15px; margin-bottom: 30px;">
+        {% for user in users %}
+          <a href="{% url 'view_user_profile' user.username %}" style="text-decoration: none;">
+            <div class="card" style="padding: 15px; display: flex; align-items: center; gap: 15px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0,0,0,0.1)';">
+              {% if user.profile.profile_picture %}
+                <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #FB8B24;">
+              {% else %}
+                <div style="width: 50px; height: 50px; border-radius: 50%; background-color: #5B5941; display: flex; align-items: center; justify-content: center; color: #F7EDE2; font-size: 1.5em; font-weight: bold; border: 2px solid #FB8B24;">
+                  {{ user.username|first|upper }}
+                </div>
+              {% endif %}
+              <div style="flex: 1;">
+                <div style="font-weight: 600; color: #5B5941; font-size: 1em;">{{ user.profile.display_name|default:user.username }}</div>
+                <div style="color: rgba(91, 89, 65, 0.6); font-size: 0.85em;">@{{ user.username }}</div>
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="color: rgba(91, 89, 65, 0.6); font-style: italic; margin-bottom: 30px;">No people found.</p>
+    {% endif %}
+
+    <!-- Restaurants Section -->
+    <h3 style="margin: 30px 0 15px 0; display: flex; align-items: center; gap: 8px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FB8B24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      Places
+    </h3>
+    {% if restaurants %}
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 30px;">
+        {% for restaurant in restaurants %}
+          <div class="card" style="padding: 15px 18px; transition: all 0.3s; cursor: pointer; border: 2px solid transparent; display: inline-block;" 
+               onclick="window.location.href='{% url 'restaurant_detail' restaurant.id %}';"
+               onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.12)'; this.style.borderColor='#FB8B24';" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 5px rgba(0,0,0,0.1)'; this.style.borderColor='transparent';">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <h4 style="margin: 0; color: #5B5941; font-size: 1.05em; white-space: nowrap;">{{ restaurant.name }}</h4>
+            </div>
+            <div style="display: inline-block; padding: 3px 10px; background-color: rgba(251, 139, 36, 0.15); color: #FB8B24; border-radius: 12px; font-size: 0.75em; font-weight: 600; margin-bottom: 8px;">
+              {{ restaurant.cuisine_type }}
+            </div>
+            <div style="font-size: 0.8em; color: rgba(91, 89, 65, 0.6);">{{ restaurant.city }}, {{ restaurant.province }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="color: rgba(91, 89, 65, 0.6); font-style: italic; margin-bottom: 30px;">No places found.</p>
+    {% endif %}
+  {% else %}
+    <p style="color: rgba(91, 89, 65, 0.6); font-style: italic;">Enter a search term to find people or places.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -56,7 +56,13 @@
           </div>
         {% endif %}
         
-        <a href="{% url 'edit_profile' %}"><button style="margin-top: 10px;">Edit Profile</button></a>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <a href="{% url 'edit_profile' %}"><button>Edit Profile</button></a>
+          <form method="post" action="{% url 'logout' %}" style="display: inline; padding: 0; border: none; background: transparent; margin: 0;">
+            {% csrf_token %}
+            <button type="submit" style="background-color: rgba(91, 89, 65, 0.1); color: #5B5941;" onmouseover="this.style.backgroundColor='rgba(91, 89, 65, 0.2)';" onmouseout="this.style.backgroundColor='rgba(91, 89, 65, 0.1)';">Logout</button>
+          </form>
+        </div>
       </div>
     </div>
   </div>

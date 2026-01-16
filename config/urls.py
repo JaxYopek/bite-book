@@ -32,6 +32,8 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('signup/', restaurant_views.signup, name='signup'),
+    path('search/', restaurant_views.search, name='search'),
+    path('api/live-search/', restaurant_views.live_search, name='live_search'),
     path('restaurants/', restaurant_views.restaurant_search, name='restaurant_search'),
     path('restaurants/<int:restaurant_id>/', restaurant_views.restaurant_detail, name='restaurant_detail'),
     path('restaurants/<int:restaurant_id>/list/<str:list_type>/', restaurant_views.toggle_restaurant_list, name='toggle_restaurant_list'),
