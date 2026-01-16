@@ -812,8 +812,8 @@ def add_comment(request, review_id):
 def delete_comment(request, comment_id):
 	comment = get_object_or_404(Comment, id=comment_id)
 	
-	# Only allow the comment author to delete it
-	if comment.user != request.user:
+	# Allow the comment author or staff to delete it
+	if comment.user != request.user and not request.user.is_staff:
 		return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
 	
 	comment.delete()
@@ -1058,6 +1058,22 @@ def search_dishes_for_list(request):
 	} for item in menu_items]
 	
 	return JsonResponse({'results': results})
+
+
+@login_required
+def delete_restaurant(request, restaurant_id):
+	restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+	
+	# Only allow staff to delete restaurants
+	if not request.user.is_staff:
+		return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+	
+	restaurant.delete()
+	
+	if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+		return JsonResponse({'success': True})
+	
+	return redirect('restaurant_search')
 
 
 @login_required

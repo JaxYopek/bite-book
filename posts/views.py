@@ -99,8 +99,8 @@ def like_post(request, post_id):
 def delete_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     
-    # Only allow the post author to delete it
-    if post.user != request.user:
+    # Allow the post author or staff to delete it
+    if post.user != request.user and not request.user.is_staff:
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
     post.delete()
@@ -115,8 +115,8 @@ def delete_post(request, post_id):
 def delete_post_comment(request, comment_id):
     comment = get_object_or_404(PostComment, id=comment_id)
     
-    # Only allow the comment author to delete it
-    if comment.user != request.user:
+    # Allow the comment author or staff to delete it
+    if comment.user != request.user and not request.user.is_staff:
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
     
     comment.delete()

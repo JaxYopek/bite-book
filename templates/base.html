@@ -341,7 +341,9 @@
 <body>
     {% if user.is_authenticated %}
     <nav>
-        <a href="{% url 'feed' %}" class="nav-logo">bitebook</a>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <a href="{% url 'feed' %}" class="nav-logo">bitebook</a>
+        </div>
         <div class="nav-search">
             <form action="{% url 'search' %}" method="get" id="searchForm">
                 <input type="text" name="q" id="searchInput" placeholder="Search people or places..." value="{{ request.GET.q }}" autocomplete="off">
