@@ -32,6 +32,7 @@
   
   <hr style="margin: 40px 0; border: none; border-top: 2px solid rgba(91, 89, 65, 0.1);">
   
+  {% if user.is_authenticated %}
   <div style="margin-bottom: 20px;">
     <h3 style="cursor: pointer; display: flex; align-items: center; gap: 10px;" onclick="toggleHappyHourSection()">
       <span id="happy-hour-toggle">▶</span>
@@ -132,6 +133,11 @@
     <input type="number" step="0.01" name="price" required>
     <button type="submit">Add Item</button>
   </form>
+  {% else %}
+  <div style="padding: 20px; background-color: rgba(251, 139, 36, 0.05); border-radius: 8px; margin: 20px 0; text-align: center;">
+    <p style="color: rgba(91, 89, 65, 0.8); margin: 0;">Want to add menu items or reviews? <a href="{% url 'login' %}?next={{ request.path }}" style="color: #FB8B24; text-decoration: none; font-weight: 500;">Sign in</a> or <a href="{% url 'signup' %}?next={{ request.path }}" style="color: #FB8B24; text-decoration: none; font-weight: 500;">create an account</a></p>
+  </div>
+  {% endif %}
 </div>
 
 <script>

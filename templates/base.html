@@ -81,7 +81,8 @@
         }
         .nav-search {
             flex: 0 1 400px;
-            margin-left: -350px;
+            margin-left: 10px;
+            margin-right: 200px;
             margin-top: 6px;
             position: relative;
         }
@@ -339,11 +340,11 @@
     </style>
 </head>
 <body>
-    {% if user.is_authenticated %}
     <nav>
         <div style="display: flex; align-items: center; gap: 10px;">
-            <a href="{% url 'feed' %}" class="nav-logo">bitebook</a>
+            <a href="{% url 'restaurant_search' %}" class="nav-logo">bitebook</a>
         </div>
+        {% if user.is_authenticated %}
         <div class="nav-search">
             <form action="{% url 'search' %}" method="get" id="searchForm">
                 <input type="text" name="q" id="searchInput" placeholder="Search people or places..." value="{{ request.GET.q }}" autocomplete="off">
@@ -351,6 +352,12 @@
             <div id="searchDropdown" class="search-dropdown"></div>
         </div>
         <ul>
+            <li>
+                <a href="{% url 'feed' %}">
+                    <span class="nav-icon"><i class="fas fa-home"></i></span>
+                    <span class="nav-text">Feed</span>
+                </a>
+            </li>
             <li>
                 <a href="{% url 'restaurant_search' %}">
                     <span class="nav-icon"><i class="fas fa-utensils"></i></span>
@@ -377,7 +384,22 @@
                 </a>
             </li>
         </ul>
+        {% else %}
+        <ul style="margin-left: auto;">
+            <li>
+                <a href="{% url 'login' %}" style="background-color: #FB8B24; color: #F7EDE2; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: 2px solid #FB8B24;">
+                    Log In
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'signup' %}" style="border: 2px solid #5B5941; padding: 10px 20px; border-radius: 8px; font-weight: 600;">
+                    Sign Up
+                </a>
+            </li>
+        </ul>
+        {% endif %}
     </nav>
+    {% if user.is_authenticated %}
     <script>
         // Real-time search functionality
         let searchTimeout;
@@ -451,12 +473,15 @@
                 html += '<div class="search-dropdown-section">';
                 html += '<div class="search-dropdown-title">Restaurants</div>';
                 data.restaurants.forEach(restaurant => {
+                    const ratingDisplay = restaurant.rating > 0 
+                        ? `<span style="color: #FB8B24; font-weight: 600;">${restaurant.rating}/10</span> • ` 
+                        : '';
                     html += `
                         <a href="/restaurants/${restaurant.id}/" class="search-dropdown-item">
                             <div class="search-dropdown-icon"><i class="fas fa-utensils"></i></div>
                             <div class="search-dropdown-content">
                                 <div class="search-dropdown-primary">${restaurant.name}</div>
-                                <div class="search-dropdown-secondary">${restaurant.city}</div>
+                                <div class="search-dropdown-secondary">${ratingDisplay}${restaurant.city}</div>
                             </div>
                         </a>
                     `;

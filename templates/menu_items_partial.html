@@ -15,14 +15,18 @@
       </div>
       
       <div style="margin-top: 10px;">
-        <a href="{% url 'add_review' item_data.item.id %}"><button style="padding: 8px 15px; font-size: 0.9em;">Review Item</button></a>
-        <button onclick="openAddToListModal('menu_item', {{ item_data.item.id }})" style="margin-left: 10px; background-color: transparent; color: rgba(91, 89, 65, 0.7); border: 1.5px solid rgba(91, 89, 65, 0.25); padding: 8px 15px; font-size: 0.9em; display: inline-flex; align-items: center; gap: 5px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Add to List
-        </button>
+        {% if user.is_authenticated %}
+          <a href="{% url 'add_review' item_data.item.id %}"><button style="padding: 8px 15px; font-size: 0.9em;">Review Item</button></a>
+          <button onclick="openAddToListModal('menu_item', {{ item_data.item.id }})" style="margin-left: 10px; background-color: transparent; color: rgba(91, 89, 65, 0.7); border: 1.5px solid rgba(91, 89, 65, 0.25); padding: 8px 15px; font-size: 0.9em; display: inline-flex; align-items: center; gap: 5px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add to List
+          </button>
+        {% else %}
+          <a href="{% url 'login' %}?next={% url 'add_review' item_data.item.id %}"><button style="padding: 8px 15px; font-size: 0.9em;">Sign in to Review</button></a>
+        {% endif %}
         {% if item_data.item.reviews.exists %}
           <button onclick="toggleReviews('reviews-{{ item_data.item.id }}')" style="margin-left: 10px; background-color: #5B5941; padding: 8px 15px; font-size: 0.9em;">
             View Reviews ({{ item_data.item.reviews.count }})
@@ -49,12 +53,21 @@
                       <img src="{{ review_data.review.image.url }}" alt="Review photo" style="max-width: 250px; border-radius: 5px; margin-top: 5px;">
                     {% endif %}
                   </div>
+                  {% if user.is_authenticated %}
                   <a href="{% url 'like_review' review_data.review.id %}" id="like-btn-{{ review_data.review.id }}" style="display: flex; align-items: center; gap: 3px; text-decoration: none; margin-left: 10px; cursor: pointer;" onclick="likeReview(event, {{ review_data.review.id }}, {{ review_data.user_has_liked|yesno:'true,false' }})">
                     <svg id="like-icon-{{ review_data.review.id }}" width="16" height="16" viewBox="0 0 24 24" fill="{% if review_data.user_has_liked %}#FB8B24{% else %}none{% endif %}" stroke="{% if review_data.user_has_liked %}#FB8B24{% else %}rgba(91, 89, 65, 0.6){% endif %}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                     </svg>
                     <span id="like-count-{{ review_data.review.id }}" style="color: rgba(91, 89, 65, 0.7); font-size: 0.85em;">{{ review_data.like_count }}</span>
                   </a>
+                  {% else %}
+                  <div style="display: flex; align-items: center; gap: 3px; margin-left: 10px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(91, 89, 65, 0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    <span style="color: rgba(91, 89, 65, 0.5); font-size: 0.85em;">{{ review_data.like_count }}</span>
+                  </div>
+                  {% endif %}
                 </div>
               </li>
             {% endfor %}

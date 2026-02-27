@@ -44,9 +44,8 @@ class ProfileForm(forms.ModelForm):
 		fields = ['display_name', 'profile_picture']
 
 def root_redirect(request):
-	if request.user.is_authenticated:
-		return redirect('feed')
-	return redirect('login')
+	# Redirect to restaurant search for all users
+	return redirect('restaurant_search')
 
 @login_required
 def search(request):
@@ -106,11 +105,15 @@ def live_search(request):
 			models.Q(city__icontains=query)
 		).distinct()[:5]
 		
+		from django.db.models import Avg
 		results['restaurants'] = [
 			{
 				'id': restaurant.id,
 				'name': restaurant.name,
-				'city': restaurant.city
+				'city': restaurant.city,
+				'rating': round(Review.objects.filter(
+					menu_item__menu__restaurant=restaurant
+				).aggregate(avg=Avg('rating'))['avg'] or 0, 1)
 			}
 			for restaurant in restaurants
 		]
@@ -127,8 +130,6 @@ def feed(request):
 from django.db.models import Q
 from django.core.paginator import Paginator
 
-
-@login_required
 
 def restaurant_search(request):
 	from django.db.models import Avg
@@ -202,6 +203,9 @@ def restaurant_search(request):
 	
 	form_errors = None
 	if request.method == 'POST':
+		# Require authentication for adding restaurants
+		if not request.user.is_authenticated:
+			return redirect('login')
 		form = RestaurantForm(request.POST)
 		if form.is_valid():
 			restaurant = form.save(commit=False)
@@ -243,7 +247,6 @@ def restaurant_search(request):
 	})
 
 
-@login_required
 def restaurant_detail(request, restaurant_id):
 	restaurant = get_object_or_404(Restaurant, id=restaurant_id)
 	
@@ -267,18 +270,21 @@ def restaurant_detail(request, restaurant_id):
 				'max': round(stats['max_rating'], 1) if stats['max_rating'] else 0
 			}
 	
-	# Check if restaurant is in user's lists
-	is_favorite = RestaurantList.objects.filter(
-		user=request.user,
-		restaurant=restaurant,
-		list_type='favorite'
-	).exists()
-	
-	is_want_to_try = RestaurantList.objects.filter(
-		user=request.user,
-		restaurant=restaurant,
-		list_type='want_to_try'
-	).exists()
+	# Check if restaurant is in user's lists (only for authenticated users)
+	is_favorite = False
+	is_want_to_try = False
+	if request.user.is_authenticated:
+		is_favorite = RestaurantList.objects.filter(
+			user=request.user,
+			restaurant=restaurant,
+			list_type='favorite'
+		).exists()
+		
+		is_want_to_try = RestaurantList.objects.filter(
+			user=request.user,
+			restaurant=restaurant,
+			list_type='want_to_try'
+		).exists()
 	
 	# Get happy hour information
 	happy_hours = restaurant.happy_hours.all()
@@ -363,14 +369,20 @@ def add_menu(request, restaurant_id):
 	return render(request, 'add_menu.html', {'restaurant': restaurant})
 
 
-@login_required
 def view_menu(request, restaurant_id):
 	restaurant = get_object_or_404(Restaurant, id=restaurant_id)
 	menu = getattr(restaurant, 'menu', None)
 	if not menu:
+		# Only allow authenticated users to add menu
+		if not request.user.is_authenticated:
+			return redirect('login')
 		return redirect('add_menu', restaurant_id=restaurant_id)
 	
 	if request.method == 'POST':
+		# Require authentication for POST actions (adding items, etc.)
+		if not request.user.is_authenticated:
+			return redirect('login')
+			
 		action = request.POST.get('action', 'add_item')
 		
 		if action == 'add_item':
@@ -445,7 +457,7 @@ def view_menu(request, restaurant_id):
 			review_data = {
 				'review': review,
 				'like_count': review.likes.count(),
-				'user_has_liked': review.likes.filter(user=request.user).exists()
+				'user_has_liked': review.likes.filter(user=request.user).exists() if request.user.is_authenticated else False
 			}
 			reviews_with_likes.append(review_data)
 		

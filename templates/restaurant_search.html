@@ -482,9 +482,16 @@
 
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h3 style="margin: 0;">Restaurants</h3>
+    {% if user.is_authenticated %}
     <button class="secondary-btn" onclick="document.getElementById('add-restaurant-form').style.display='block'" style="padding: 10px 20px; font-size: 0.9em;">+ Add Restaurant</button>
+    {% else %}
+    <p style="color: rgba(91, 89, 65, 0.7); font-size: 0.85em; margin: 0;">
+      <a href="{% url 'login' %}?next={{ request.path }}" style="color: #FB8B24; text-decoration: none; font-weight: 500;">Sign in</a> to add restaurants
+    </p>
+    {% endif %}
   </div>
 
+  {% if user.is_authenticated %}
   <div id="add-restaurant-form" style="display:none; margin-bottom:30px; border:2px solid rgba(91, 89, 65, 0.2); border-radius: 10px; padding:25px; background-color: rgba(251, 139, 36, 0.02);">
     <h3>Add a Restaurant</h3>
     
@@ -581,6 +588,7 @@
       </div>
     </form>
   </div>
+  {% endif %}
 
   <script>
     function resetAddForm() {
@@ -729,7 +737,7 @@
             </a>
         </div>
       {% empty %}
-        <div style="width: 100%; text-align: center; padding: 40px; color: rgba(91, 89, 65, 0.5);">
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: rgba(91, 89, 65, 0.5);">
           <p style="font-size: 1.2em; margin: 0;">No restaurants found</p>
           <p style="font-size: 0.9em; margin-top: 5px;">Try adjusting your search or filters</p>
         </div>
