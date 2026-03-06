@@ -1,5 +1,7 @@
 # bitebook
 
+<img src="static/favicon.ico" alt="bitebook favicon" width="50" height="50">
+
 A Django-based web application for restaurant and menu item reviews, inspired by Letterboxd but for food. Users can discover restaurants, review menu items with detailed ratings, share experiences, and build flavor profiles based on their preferences.
 
 ## Features

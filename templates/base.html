@@ -60,7 +60,7 @@
         /* Navigation */
         nav {
             background-color: #FFFFFF;
-            padding: 5px 60px;
+            padding: 5px 20px;
             border-bottom: 1px solid rgba(91, 89, 65, 0.2);
             display: flex;
             justify-content: space-between;
@@ -74,15 +74,19 @@
             font-weight: bold;
             color: #5B5941;
             text-decoration: none;
-            margin-left: 50px;
+            margin-left: 0;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .nav-logo:hover {
             color: #FB8B24;
         }
         .nav-search {
-            flex: 0 1 400px;
-            margin-left: 10px;
-            margin-right: 200px;
+            flex: 1 1 auto;
+            max-width: 400px;
+            min-width: 150px;
+            margin-left: 20px;
+            margin-right: 20px;
             margin-top: 6px;
             position: relative;
         }
@@ -191,7 +195,7 @@
             position: relative;
         }
         nav ul li:last-child {
-            margin-right: 20px;
+            margin-right: 0;
         }
         nav ul li a, nav ul li button.nav-btn {
             color: #5B5941;
