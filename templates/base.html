@@ -75,7 +75,7 @@
             font-weight: bold;
             color: #5B5941;
             text-decoration: none;
-            margin-left: 0;
+            margin-left: 70px;
             white-space: nowrap;
             flex-shrink: 0;
         }
@@ -214,9 +214,24 @@
             font-size: 18px;
             line-height: 1;
         }
+        nav ul li a .nav-icon, nav ul li button.nav-btn .nav-icon {
+            font-size: 18px;
+            line-height: 1;
+        }
+        nav ul li a .right-icon, nav ul li button.nav-btn .right-icon {
+            font-size: 18px;
+            line-height: 1;
+            margin-right: 70px;
+        }
+
         nav ul li a .nav-text, nav ul li button.nav-btn .nav-text {
             font-size: 12px;
             font-weight: 500;
+        }
+        nav ul li a .right-text, nav ul li button.nav-btn .right-text {
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 70px;
         }
         .notification-badge {
             position: absolute;
@@ -383,8 +398,8 @@
             </li>
             <li>
                 <a href="{% url 'user_profile' %}">
-                    <span class="nav-icon"><i class="fas fa-user"></i></span>
-                    <span class="nav-text">Profile</span>
+                    <span class="right-icon"><i class="fas fa-user"></i></span>
+                    <span class="right-text">Profile</span>
                 </a>
             </li>
         </ul>
