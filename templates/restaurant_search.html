@@ -507,19 +507,52 @@
     <form method="post" id="restaurant-form">
       {% csrf_token %}
       
-      <!-- Step 1: Location Search -->
+      <!-- Step 1: Google Places Search or Manual Entry -->
       <div id="location-step">
         <div style="margin-bottom: 20px;">
           <label style="font-weight: 600; display: block; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#FB8B24"/>
             </svg>
-            Search Restaurant Address:
+            Find Restaurant from Google:
           </label>
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input 
+              id="google-search-input" 
+              type="text" 
+              placeholder="Search for restaurant name or address..." 
+              style="flex: 1; padding: 14px 18px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px; font-size: 1em; transition: all 0.3s;"
+              onfocus="this.style.borderColor='#FB8B24';"
+              onblur="this.style.borderColor='rgba(91, 89, 65, 0.2)';"
+            >
+            <button type="button" onclick="searchGoogleRestaurants()" style="padding: 12px 24px; background-color: #FB8B24; color: #F7EDE2; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(251, 139, 36, 0.3)'" onmouseout="this.style.boxShadow='none'">Search</button>
+          </div>
+          <small style="color: rgba(91, 89, 65, 0.6); display: block; margin-bottom: 15px;">Search results will appear below</small>
+
+          <!-- Google Search Results -->
+          <div id="google-results" style="display: none; margin-bottom: 20px; border: 2px solid rgba(251, 139, 36, 0.3); border-radius: 8px; padding: 15px; background-color: rgba(251, 139, 36, 0.05); max-height: 300px; overflow-y: auto;">
+            <div style="font-weight: 600; margin-bottom: 12px; color: #5B5941;">Google Place Results:</div>
+            <div id="google-results-list"></div>
+          </div>
+
+          <!-- Loading message -->
+          <div id="search-loading" style="display: none; padding: 15px; text-align: center; color: #FB8B24;">
+            <span style="font-style: italic;">Searching...</span>
+          </div>
+
+          <!-- Or separator -->
+          <div style="display: flex; align-items: center; margin: 20px 0; gap: 10px; opacity: 0.7;">
+            <div style="flex: 1; height: 1px; background-color: rgba(91, 89, 65, 0.2);"></div>
+            <span style="font-size: 0.9em; color: rgba(91, 89, 65, 0.6);">OR</span>
+            <div style="flex: 1; height: 1px; background-color: rgba(91, 89, 65, 0.2);"></div>
+          </div>
+
+          <!-- Manual Entry -->
+          <label style="font-weight: 600; display: block; margin: 15px 0 8px 0; color: rgba(91, 89, 65, 0.8);">Enter Manually:</label>
           <input 
             id="location-autocomplete" 
             type="text" 
-            placeholder="Start typing the restaurant address..." 
+            placeholder="Enter restaurant address manually..." 
             style="width: 100%; padding: 14px 18px; border: 2px solid rgba(91, 89, 65, 0.2); border-radius: 8px; font-size: 1em; transition: all 0.3s;"
             onfocus="this.style.borderColor='#FB8B24';"
             onblur="this.style.borderColor='rgba(91, 89, 65, 0.2)';"
@@ -594,6 +627,9 @@
     function resetAddForm() {
       document.getElementById('add-restaurant-form').style.display = 'none';
       document.getElementById('location-autocomplete').value = '';
+      document.getElementById('google-search-input').value = '';  // Clear Google search input
+      document.getElementById('google-results').style.display = 'none';  // Hide search results
+      document.getElementById('google-results-list').innerHTML = '';  // Clear search results
       document.getElementById('restaurant-form').reset();
       document.getElementById('location-step').style.display = 'block';
       document.getElementById('details-step').style.display = 'none';
@@ -690,6 +726,153 @@
         document.head.appendChild(script);
       } else {
         initAutocomplete();
+      }
+    });
+
+    // Google Places search function
+    function searchGoogleRestaurants() {
+      const query = document.getElementById('google-search-input').value.trim();
+      if (!query) {
+        alert('Please enter a restaurant name or address');
+        return;
+      }
+
+      // Clear previous results
+      document.getElementById('google-results-list').innerHTML = '';
+      document.getElementById('google-results').style.display = 'none';
+
+      // Show loading message
+      document.getElementById('search-loading').style.display = 'block';
+
+      // Fetch results from our API endpoint
+      fetch(`/api/search-google-restaurants/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('search-loading').style.display = 'none';
+
+          if (data.error) {
+            alert('Error searching: ' + data.error);
+            return;
+          }
+
+          const results = data.results || [];
+          if (results.length === 0) {
+            alert('No restaurants found. Try a different search.');
+            return;
+          }
+
+          // Display results
+          const resultsList = document.getElementById('google-results-list');
+          resultsList.innerHTML = '';
+
+          results.forEach((result, index) => {
+            const resultDiv = document.createElement('div');
+            resultDiv.style.cssText = `
+              padding: 12px;
+              margin-bottom: 10px;
+              background-color: #fff;
+              border-radius: 6px;
+              border: 1px solid rgba(251, 139, 36, 0.2);
+              cursor: pointer;
+              transition: all 0.2s;
+            `;
+            resultDiv.onmouseover = function() {
+              this.style.backgroundColor = 'rgba(251, 139, 36, 0.1)';
+              this.style.borderColor = '#FB8B24';
+            };
+            resultDiv.onmouseout = function() {
+              this.style.backgroundColor = '#fff';
+              this.style.borderColor = 'rgba(251, 139, 36, 0.2)';
+            };
+
+            const ratingHTML = result.rating ? `<span style="color: #FB8B24; margin-left: 8px;">★ ${result.rating}</span>` : '';
+            resultDiv.innerHTML = `
+              <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #5B5941; margin-bottom: 4px;">${result.name}${ratingHTML}</div>
+                  <div style="font-size: 0.85em; color: rgba(91, 89, 65, 0.7); margin-bottom: 8px;">${result.address}</div>
+                  <button 
+                    type="button" 
+                    onclick="useGoogleRestaurant('${result.place_id}')"
+                    style="padding: 6px 12px; background-color: #FB8B24; color: #F7EDE2; border: none; border-radius: 4px; font-size: 0.85em; font-weight: 500; cursor: pointer;"
+                  >Use This</button>
+                </div>
+              </div>
+            `;
+            resultsList.appendChild(resultDiv);
+          });
+
+          document.getElementById('google-results').style.display = 'block';
+        })
+        .catch(error => {
+          document.getElementById('search-loading').style.display = 'none';
+          alert('Error searching for restaurants: ' + error);
+        });
+    }
+
+    // Load restaurant details from Google and pre-fill form
+    function useGoogleRestaurant(placeId) {
+      document.getElementById('search-loading').style.display = 'block';
+
+      fetch(`/api/google-restaurant-details/?place_id=${encodeURIComponent(placeId)}`)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('search-loading').style.display = 'none';
+
+          if (data.error) {
+            alert('Error loading restaurant details: ' + data.error);
+            return;
+          }
+
+          // Pre-fill hidden address fields
+          document.getElementById('hidden-address1').value = data.address_line1 || '';
+          document.getElementById('hidden-address2').value = '';
+          document.getElementById('hidden-city').value = data.city || '';
+          document.getElementById('hidden-province').value = data.province || '';
+          document.getElementById('hidden-postal').value = data.postal_code || '';
+          document.getElementById('hidden-country').value = data.country || 'Canada';
+
+          // Pre-fill restaurant name
+          const nameInput = document.querySelector('input[name="name"]');
+          nameInput.value = data.name || '';
+
+          // Pre-fill cuisine type if available
+          const cuisineSelect = document.querySelector('select[name="cuisine_type"]');
+          if (data.cuisine_type) {
+            const options = Array.from(cuisineSelect.options);
+            const matching = options.find(opt => opt.value === data.cuisine_type);
+            if (matching) {
+              cuisineSelect.value = data.cuisine_type;
+            }
+          }
+
+          // Show the display address
+          const addressDisplay = `${data.address_line1}${data.city ? ', ' + data.city : ''}${data.province ? ', ' + data.province : ''} ${data.postal_code || ''}`;
+          document.getElementById('selected-address').textContent = addressDisplay;
+
+          // Hide location step, show details step
+          document.getElementById('location-step').style.display = 'none';
+          document.getElementById('details-step').style.display = 'block';
+
+          // Focus on happy hour field (last editable field)
+          document.querySelector('textarea[name="happy_hour"]').focus();
+        })
+        .catch(error => {
+          document.getElementById('search-loading').style.display = 'none';
+          alert('Error loading restaurant details: ' + error);
+        });
+    }
+
+    // Allow searching on Enter key
+    document.addEventListener('DOMContentLoaded', function() {
+      const googleSearchInput = document.getElementById('google-search-input');
+      if (googleSearchInput) {
+        googleSearchInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            searchGoogleRestaurants();
+          }
+        });
       }
     });
   </script>

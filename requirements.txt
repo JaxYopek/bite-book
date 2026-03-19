@@ -3,3 +3,4 @@ Django==6.0
 pillow==12.1.0
 python-dotenv==1.2.1
 sqlparse==0.5.5
+googlemaps==4.10.0

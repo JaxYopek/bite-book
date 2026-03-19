@@ -67,6 +67,8 @@ urlpatterns = [
     path('notifications/', restaurant_views.notifications, name='notifications'),
     path('notifications/<int:notification_id>/read/', restaurant_views.mark_notification_read, name='mark_notification_read'),
     path('api/notifications/unread-count/', restaurant_views.get_unread_notification_count, name='get_unread_notification_count'),
+    path('api/search-google-restaurants/', restaurant_views.search_google_restaurants, name='search_google_restaurants'),
+    path('api/google-restaurant-details/', restaurant_views.get_google_restaurant_details, name='get_google_restaurant_details'),
 ]
 
 if settings.DEBUG:

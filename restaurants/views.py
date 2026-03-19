@@ -1138,3 +1138,48 @@ def mark_notification_read(request, notification_id):
 def get_unread_notification_count(request):
 	count = Notification.objects.filter(user=request.user, is_read=False).count()
 	return JsonResponse({'count': count})
+
+
+# Google Places API Integration Views
+@login_required
+def search_google_restaurants(request):
+	"""
+	Search for restaurants using Google Places API.
+	Returns JSON with search results.
+	"""
+	from restaurants.google_places import search_restaurants
+	
+	query = request.GET.get('q', '').strip()
+	location = request.GET.get('location', '').strip()
+	
+	if not query:
+		return JsonResponse({'results': [], 'error': 'Query required'}, status=400)
+	
+	try:
+		results = search_restaurants(query, location)
+		return JsonResponse({'results': results})
+	except Exception as e:
+		return JsonResponse({'error': str(e), 'results': []}, status=500)
+
+
+@login_required
+def get_google_restaurant_details(request):
+	"""
+	Get detailed information about a restaurant from Google Places.
+	Takes place_id as parameter and returns pre-filled form data.
+	"""
+	from restaurants.google_places import get_restaurant_details
+	
+	place_id = request.GET.get('place_id', '').strip()
+	
+	if not place_id:
+		return JsonResponse({'error': 'place_id required'}, status=400)
+	
+	try:
+		details = get_restaurant_details(place_id)
+		if details:
+			return JsonResponse(details)
+		else:
+			return JsonResponse({'error': 'Could not retrieve restaurant details'}, status=500)
+	except Exception as e:
+		return JsonResponse({'error': str(e)}, status=500)
